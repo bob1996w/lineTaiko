@@ -1,0 +1,22 @@
+* {
+  padding: 0;
+  margin: 20px;
+  font-family: Lucida Sans Unicode;
+}
+canvas {
+  background: #eee;
+  display: block;
+  margin: 0 auto;
+}
+.header {
+  border:2px orange solid;
+}
+.inputForm {
+  max-width: 500px;
+  border:2px #0095DD solid;
+  border-radius: 5px;
+  margin: 10px;
+  font-size: 20px;
+  align-items: center;
+  margin: auto;
+}
