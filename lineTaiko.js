@@ -12,12 +12,72 @@ function isInside(pos, rect){
 }
 
 
+/*
+  KeyHandler class that keep on listening on keys.
+
+  keyDownTrigger and keyUpTrigger are updated by the event handlers with trigger()
+  function.
+  When _compund() starts a new cycle, nowStatus(true when key is held)
+  will be updated by update() function.
+  rise and fall indicates some key had keyDown or keyUp Action in this frame.
+*/
+var KeyHandler = function () {
+  this.keyDownTrigger = false;
+  this.keyUpTrigger = false;
+  this.nowStatus = false;
+  this.rise = false;
+  this.fall = false;
+};
+KeyHandler.prototype.fell = function(){
+  return this.fall;
+}
+KeyHandler.prototype.rose = function(){
+  return this.rise;
+}
+KeyHandler.prototype.isHolding = function(){
+  return this.nowStatus;
+}
+KeyHandler.prototype.trigger = function(status){
+  // if status = true then trigger keyDownTrigger.
+  if(status){
+    if(!this.nowStatus){
+      // press and hold the key will fire multiple keyDown events
+      this.keyDownTrigger = true;
+    }
+  }else{
+    this.keyUpTrigger = true;
+  }
+}
+KeyHandler.prototype.update = function(){
+  if(this.rise){
+    this.rise = false;
+  }
+  if(this.fall){
+    this.fall = false;
+  }
+  if(this.keyDownTrigger){
+    this.nowStatus = true;
+    this.keyDownTrigger = false;
+    this.rise = true;
+  }else if(this.keyUpTrigger){
+    this.nowStatus = false;
+    this.keyUpTrigger = false;
+    this.fall = true;
+  }
+}
+// end of KeyHandler
 
 $(document).ready(function(){
   var bgm = document.createElement("audio");
-
   var canvas = document.getElementById("mainGame");
   var ctx = canvas.getContext("2d");
+
+  // initialize KeyHandler Objects
+
+  var keys = {};
+  keys["Spacebar"] = new KeyHandler();
+  keys["ArrowLeft"] = new KeyHandler();
+  keys["ArrowRight"] = new KeyHandler();
 
   // canvas mouse listener
   canvas.addEventListener('click', function(evt) {
@@ -26,24 +86,61 @@ $(document).ready(function(){
       for (var button in menuButtons){
         if (isInside(mousePos, menuButtons[button])) {
             if(button == "startButton"){
-              changeStatusMode(2);
               startGame();
+              changeStatusMode(2);
               console.log("yes");
             }
         }
       }
     }
   }, false);
+  document.addEventListener("keydown", keyDownHandler, false);
+  document.addEventListener("keyup", keyUpHandler, false);
+  function keyDownHandler(e) {
+    if(e.key == " " || e.key == "Spacebar") {
+      keys["Spacebar"].trigger(true);
+    }
+    else if(e.key == "ArrowLeft") {
+      keys["ArrowLeft"].trigger(true);
+    }
+    else if(e.key == "ArrowRight") {
+      keys["ArrowRight"].trigger(true);
+    }
+  }
+
+  function keyUpHandler(e) {
+    if(e.key == " " || e.key == "Spacebar") {
+      keys["Spacebar"].trigger(false);
+    }
+    else if(e.key == "ArrowLeft") {
+      keys["ArrowLeft"].trigger(false);
+    }
+    else if(e.key == "ArrowRight") {
+      keys["ArrowRight"].trigger(false);
+    }
+  }
 
   var nowTime = Date.now();
   var startTime = Date.now();
   var elapseTime = 0;
   var nowFrame = 0;
   var playarea = {x1: 0, y1: 50, x2: canvas.width, y2: 150};
-  var judge = {x: 100, y: 100, h: 50};
-  var scrollSpeed = 100;   // pixel per sec
+  var judge = {x: 100, y: 100, h: playarea.y2 - playarea.y1};
+  var scrollSpeed = 400;   // pixel per sec
+  var scrollMult = 1.0;   // set on menu screen
   var dataObj = {};
   var revNoteObjs = {}; // for drawing notes
+  var hitNoteObjs = {}; // for timing the hits
+  var eventObjs = {}; // reserved for events like song end
+  var judgeTime = {great: 35, good: 100};
+  var hitNotePos = 0; // this is the place where a note is detected.
+  var evPos = 0; // indeicate event collection's position.
+  // game variables
+  var score = 0;
+  var combo = 0;
+  var judgeRes = {great: 0, good: 0, miss: 0};
+  var lastJudge = {delay: 0, judge: "", timing: "", hitNotePosNext: false}
+
 
   // ui buttons
   var menuButtons = {
@@ -53,35 +150,129 @@ $(document).ready(function(){
   // start playing the notes
   function startGame(){
     dataObj = window.dataObj;
-    revNoteObjs = dataObj["s"].reverse();
+    hitNoteObjs = dataObj["s"];
+    revNoteObjs = hitNoteObjs;
+    //console.log(hitNoteObjs);
+    eventObjs = dataObj["e"];
+    console.log(eventObjs);
+    hitNotePos = 0;
+    evPos = 0;
     bgm.src = window.musicBlobUrl;
-    console.log(dataObj);
+    //console.log(dataObj);
+    score = 0;
+    combo = 0;
+    judgeRes = {great: 0, good: 0, miss: 0};
+    lastJudge = {delay: 0, judge: "", timing: "", hitNotePosNext: false};
     nowTime = Date.now();
     startTime = nowTime;
     bgm.play();
   }
 
-  function drawNote(noteObj, elapseTime, scrollSpeed){
+  function eventProcess(elapseTime, evPos){
+    if(elapseTime > eventObjs[evPos].t && eventObjs[evPos].done == false){
+      console.log(eventObjs[evPos]);
+      if(eventObjs[evPos].type == "end"){
+        changeStatusMode(3);
+        bgm.pause();
+        bgm.currentTime = 0;
+        eventObjs[evPos].done = true;
+      }
+    }
+
+    return (evPos >= eventObjs.length - 1)? evPos : evPos + 1;
+  }
+
+  // TODO: read the hit label and don't draw when the note is hit
+  function drawNote(noteObj, elapseTime, scrollSpeed, special){
     var xpos = (noteObj.t - elapseTime) * scrollSpeed * noteObj.s / 1000 + judge.x;
     if(xpos > -300 && xpos < canvas.width + 300){
-      ctx.beginPath();
-      ctx.fillStyle = "orange"
-      ctx.arc(xpos, judge.y, 25, 0, Math.PI*2);
-      ctx.fill();
-      ctx.strokeStyle = "black"
-      ctx.lineWidth = 5;
-      ctx.stroke();
-      ctx.closePath();
+
+      if(special){
+        ctx.beginPath();
+        ctx.fillStyle = "black"
+        ctx.arc(xpos, judge.y, 25, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = "orange"
+        ctx.lineWidth = 5;
+        ctx.stroke();
+        //ctx.closePath();
+      }else{
+        ctx.beginPath();
+        ctx.fillStyle = "orange"
+        ctx.arc(xpos, judge.y, 25, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = "black"
+        ctx.lineWidth = 5;
+        ctx.stroke();
+        //ctx.closePath();
+      }
+    }
+  }
+
+  function drawPlayField(elapseTime, hitNotePos){
+    for (var index = revNoteObjs.length - 1; index >= 0; index--){
+      if(revNoteObjs[index].n > 0){
+        if(index == hitNotePos){
+          drawNote(revNoteObjs[index], elapseTime, scrollSpeed, true);
+        }
+        else{
+          drawNote(revNoteObjs[index], elapseTime, scrollSpeed, false);
+        }
+      }
     }
   }
 
 
-  function drawPlayField(){
-    nowTime = Date.now();
-    elapseTime = nowTime - startTime;
-    for (var note in revNoteObjs){
-      drawNote(revNoteObjs[note], elapseTime, scrollSpeed);
+  function updatePos(elapseTime, pos, objs){
+    if(hitNotePos >= hitNoteObjs.length - 1){
+      return hitNotePos;
     }
+    else if(elapseTime - hitNoteObjs[hitNotePos].t > judgeTime.good){
+      judgeRes.miss ++;
+      return hitNotePos + 1;
+    }
+    else {
+      return hitNotePos;
+    }
+  }
+
+  // TODO: add combo counter
+  // TODO: handle Miss -> display
+  function detectHit(elapseTime, noteObj){
+    var delay = elapseTime - noteObj.t;
+    var judgeObj = {
+      delay: delay,
+      judge: "",
+      timing: "",
+      hitNotePosNext: false
+    };
+    judgeObj["delay"] = delay;
+    if(delay > judgeTime.good){ // too late
+      judgeObj.judge = "miss";
+      judgeObj.timing = "";
+      judgeObj.hitNotePosNext = true;
+    }else if(judgeTime.great < delay && delay < judgeTime.good){
+      judgeObj.judge = "good";
+      judgeObj.timing = "late";
+      judgeObj.hitNotePosNext = true;
+    }else if(-judgeTime.great < delay && delay < judgeTime.great){
+      judgeObj.judge = "great";
+      judgeObj.timing = "";
+      judgeObj.hitNotePosNext = true;
+    }else if(-judgeTime.good < delay && delay < -judgeTime.great){
+      judgeObj.judge = "good";
+      judgeObj.timing = "early"
+      judgeObj.hitNotePosNext = true;
+    }
+    return judgeObj;
+  }
+
+  function drawJudge(judge){
+    ctx.beginPath();
+    ctx.font = "20px Lucida Sans Unicode";
+    ctx.fillStyle = "#0095DD"
+    ctx.textAlign = "center";
+    ctx.fillText(judge.timing + " " + judge.judge + " " + judge.delay + " ms", canvas.width/2, canvas.height/2 + 20);
   }
 
   //draw button on menus
@@ -93,6 +284,12 @@ $(document).ready(function(){
     ctx.textBaseline = "middle";
     ctx.fillText(button.text, button.x + button.w/2, button.y + button.h/2);
   }
+
+  function drawKeyDownBurst(){
+    ctx.fillStyle = "#ff0000";
+    ctx.fillRect(judge.x - judge.h/2, judge.y - judge.h/2, judge.h, judge.h);
+  }
+  // TODO: add hit burst
 
   // draw the background UIs
   function drawUI(){
@@ -144,18 +341,14 @@ $(document).ready(function(){
     }
   }
 
-  function drawgame(){
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawUI();
-  }
 
   function _compound(){
     nowFrame += 1;
-    /*
-    if(nowFrame % 100 == 0){
-      console.log("statusMode = " + statusMode);
+    nowTime = Date.now();
+    elapseTime = nowTime - startTime;
+    for(var key in keys){
+      keys[key].update();
     }
-    */
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if(window.statusMode==0){
       // no files loaded
@@ -169,14 +362,53 @@ $(document).ready(function(){
     }
     else if(window.statusMode==2){
       // in game
+      hitNotePos = updatePos(elapseTime, hitNotePos, hitNoteObjs);
+      //console.log(hitNotePos);
+      if(keys["Spacebar"].isHolding()){
+        drawKeyDownBurst();
+      }
+      if(keys["Spacebar"].rose()){
+        var detectResult = detectHit(elapseTime, hitNoteObjs[hitNotePos]);
+        if(detectResult.hitNotePosNext){
+          hitNotePos += 1;
+        }
+        switch(detectResult.judge){
+          case "great":
+            judgeRes.great++;
+            break;
+          case "good":
+            judgeRes.good++;
+            break;
+          case "miss":
+            judgeRes.miss++;
+            break;
+          default:
+            break;
+        }
+        lastJudge = detectResult;
+      }
       drawUI();
-      drawPlayField();
-
+      drawPlayField(elapseTime, hitNotePos);
+      drawJudge(lastJudge);
+      eventProcess(elapseTime, evPos);
+      ctx.beginPath();
+      ctx.font = "20px Lucida Sans Unicode";
+      ctx.fillStyle = "#0095DD"
+      ctx.textAlign = "center";
+      ctx.fillText(nowFrame + "\nhitNotePos = " + hitNotePos, canvas.width/2, canvas.height/2);
     }
     else if(window.statusMode==3){
-      // result
+      ctx.beginPath();
+      ctx.font = "20px Lucida Sans Unicode";
+      ctx.fillStyle = "#0095DD"
+      ctx.textAlign = "center";
+      ctx.fillText("Song End", canvas.width/2, canvas.height*0.2);
+      ctx.fillText("Results:", canvas.width/2, canvas.height/2);
+      ctx.fillText("great: " + judgeRes.great, canvas.width/2, canvas.height/2 + 25);
+      ctx.fillText("good: " + judgeRes.good, canvas.width/2, canvas.height/2 + 50);
+      ctx.fillText("miss: " + judgeRes.miss, canvas.width/2, canvas.height/2 + 75);
     }
   }
-  setInterval(_compound, 10); //run every 10ms
+  setInterval(_compound, 5); //run every 10ms
 
 });

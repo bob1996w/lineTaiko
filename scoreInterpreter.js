@@ -57,6 +57,7 @@ function scoreInterpreter(scorestr){
 
   var time = 0; // in ms
   var notes = [];  // Array of all the Notes
+  var events = []; // Array of all the events(non-notes)
   var discards = []; // discarded characters
   var pos = 0;
   var noteSpeed = 1.0;
@@ -91,12 +92,13 @@ function scoreInterpreter(scorestr){
               time += noteLength;
               break;
             case "note":
+              // TODO: add a label to indicate that the note has been hit(for drawing)
               var noteObj = {t: time, n: 1, s: noteSpeed};
               notes.push(noteObj);
               break;
             case "end":
-              var noteObj = {t: time, n: 0, s: noteSpeed};
-              notes.push(noteObj);
+              var evObj = {t: time, type: "end", done: false};
+              events.push(evObj);
               break;
             default:
               errMsg(2);
@@ -116,6 +118,7 @@ function scoreInterpreter(scorestr){
   }
   alert("Scanned " + notes.length + " notes\n" + discards.length + " discarded");
   metaData["s"] = notes;
+  metaData["e"] = events;
   return metaData;
 }
 
