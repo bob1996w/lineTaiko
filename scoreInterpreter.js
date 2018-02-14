@@ -23,7 +23,7 @@ function checkAndConvert(data, type){
       if(/^[0-9]+$/.test(data) || /^[0-9]+\.[0-9]+$/.test(data)){
         return eval(data);
       }else{
-        errMsg(1);
+        errMsg(1, type);
         return 1;
       }
   }
@@ -34,9 +34,10 @@ var dataRegEx = {
   "bpm": /^\(\d+(\.\d+)?\)/,
   "noteSpeed": /^\[\d+(\.\d+)?\]/,
   "division": /^\{\d+(\.\d+)?\}/,
+  "exCommand": /^\'[a-zA-Z_][a-zA-Z0-9_]*=[a-zA-Z0-9]+\'/,
   "step": /^,/,
   "note": /^\d/,
-  "end": /E/,
+  "end": /^E/,
 }
 
 /*
@@ -47,6 +48,9 @@ note obj:
       0: end
       1: normal note
     s: note speed(multiplier) of this note
+    hit: whether this note is hit
+    angle: the andgle of approching judgePos
+    judgePos: the position it should go toward to
 */
 
 function scoreInterpreter(scorestr){
@@ -60,12 +64,16 @@ function scoreInterpreter(scorestr){
   var events = []; // Array of all the events(non-notes)
   var discards = []; // discarded characters
   var pos = 0;
+
   var noteSpeed = 1.0;
   var bpm = checkAndConvert(metaData["bpm"], "number");
-  var defdiv = (metaData["defdiv"])? checkAndConvert(metaData["offset"], "number") : 4;
+  var defdiv = (metaData["defdiv"])? checkAndConvert(metaData["defdiv"], "number") : 4;
   var div = checkAndConvert(metaData["div"], "number");
   var noteLength = 60000.0 / bpm / (div/4);
   var offset = (metaData["offset"])? checkAndConvert(metaData["offset"], "number") : 0;
+  var judgePos = {x: (metaData["judgePosX"])? checkAndConvert(metaData["judgePosX"], "number") : 100, 
+    y: (metaData["judgePosY"])? checkAndConvert(metaData["judgePosY"], "number") : 100}
+  var angle = 0;
 
   time += offset;
   while(pos < scoreDataStr.length){
@@ -93,12 +101,15 @@ function scoreInterpreter(scorestr){
               break;
             case "note":
               // TODO: add a label to indicate that the note has been hit(for drawing)
-              var noteObj = {t: time, n: 1, s: noteSpeed};
+              var noteObj = {t: time, n: 1, s: noteSpeed, hit: false, angle: angle, approachJudgePos: {x: judgePos.x, y: judgePos.y}};
               notes.push(noteObj);
               break;
             case "end":
               var evObj = {t: time, type: "end", done: false};
               events.push(evObj);
+              break;
+            case "exCommand":
+              // NOTE: reserved for future extension of data file
               break;
             default:
               errMsg(2);
@@ -122,11 +133,11 @@ function scoreInterpreter(scorestr){
   return metaData;
 }
 
-function errMsg(errN){
+function errMsg(errN, msgData){
   var msg = "";
   switch(errN){
     case 1:
-      msg = "No bpm found.";
+      msg = "No " + msgData + " found.";
     case 2:
       msg = "Something's wrong with the code."
     default:

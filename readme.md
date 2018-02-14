@@ -1,5 +1,5 @@
 
-#LineTaiko
+# LineTaiko
 
 A small music game that runs in browser with local files for music and data.
 
