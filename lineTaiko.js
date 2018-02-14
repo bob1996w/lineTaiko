@@ -229,7 +229,7 @@ $(document).ready(function(){
     if(judgeText != "miss"){
       combo += 1;
       if(combo > maxCombo){
-        masCombo = combo;
+        maxCombo = combo;
       }
     }
     else{
