@@ -226,7 +226,7 @@ $(document).ready(function(){
   function updateLastJudge(delay, judgeText){
     lastJudge.delay = delay;
     lastJudge.judge = judgeText;
-    if(judgeText != "miss"){
+    if(judgeText == "great" || judgeText == "good"){
       combo += 1;
       if(combo > maxCombo){
         maxCombo = combo;
