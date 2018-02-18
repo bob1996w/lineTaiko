@@ -27,8 +27,11 @@
   </div>
   <div class="inputForm">
     <form id="getFiles">
-      Music File:<input type="file" id="musicFile"></input><br> Data File:<input type="file" id="dataFile"></input><br>
+      Music File:<input type="file" name="musicFile" id="musicFile"></input><br>
+      Data File:<input type="file" name="dataFile" id="dataFile"></input><br>
+      SFX File (Optional):<input type="file" name="sfxFile" id="sfxFile"></input><br>
       <input type="submit" value="Send"></input>
+      <input type="button" value="Clear" onclick="this.form.reset()"></input>
     </form>
   </div>
   <!-- <a id="toGoogle" href="http://www.google.com.tw">To Google</a> -->

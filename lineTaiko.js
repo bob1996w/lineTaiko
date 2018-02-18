@@ -15,6 +15,11 @@ function deg2Rad(degrees){
   return degrees * (Math.PI / 180);
 }
 
+function playSfx(sfx){
+  sfx.currentTime = 0;
+  sfx.play();
+}
+
 /*
   KeyHandler class that keep on listening on keys.
 
@@ -72,8 +77,11 @@ KeyHandler.prototype.update = function(){
 
 $(document).ready(function(){
   var bgm = document.createElement("audio");
+  var sfx = document.createElement("audio");
+  var useSfx = true;  // whether sfx has been uploaded
   var canvas = document.getElementById("mainGame");
   var ctx = canvas.getContext("2d");
+  var statusMode = window.statusMode;
 
   // initialize KeyHandler Objects
   var acceptKeys = ["Spacebar", "ArrowLeft", "ArrowRight", "f", "j"];
@@ -84,16 +92,11 @@ $(document).ready(function(){
 
   // canvas mouse listener
   canvas.addEventListener('click', function(evt) {
-    var mousePos = getMousePos(canvas, evt);
-    if(window.statusMode == 1){
-      for (var button in menuButtons){
-        if (isInside(mousePos, menuButtons[button])) {
-            if(button == "startButton"){
-              startGame();
-              changeStatusMode(2);
-              console.log("yes");
-            }
-        }
+  var mousePos = getMousePos(canvas, evt);
+    for (var button in menuButtons){
+      if (isInside(mousePos, menuButtons[button])) {
+        menuButtons[button].trigger = true;
+        menuButtons[button].triggerTime = Date.now();
       }
     }
   }, false);
@@ -143,7 +146,7 @@ $(document).ready(function(){
 
   // ui buttons
   var menuButtons = {
-    startButton: {x: 150, y: 200, w: canvas.width - 300, h:50, text: "Start", fg: "white", bg: "#0095DD"}
+    startButton: {x: 150, y: 200, w: canvas.width - 300, h:50, text: "Start (Space)", fg: "white", bg: "#0095DD", trigger: false, clicked: false, triggerTime: 0}
   };
 
   // start playing the notes
@@ -157,7 +160,11 @@ $(document).ready(function(){
     hitNotePos = 0;
     evPos = 0;
     bgm.src = window.musicBlobUrl;
-    //console.log(dataObj);
+    if(window.sfxBlobUrl != ""){
+      useSfx = true;
+      sfx.src = window.sfxBlobUrl;
+      console.log("SFX: " + sfx.src);
+    }
     score = 0;
     combo = 0;
     judgeRes = {great: 0, good: 0, miss: 0};
@@ -171,10 +178,12 @@ $(document).ready(function(){
     if(elapseTime > eventObjs[evPos].t && eventObjs[evPos].done == false){
       console.log(eventObjs[evPos]);
       if(eventObjs[evPos].type == "end"){
-        changeStatusMode(3);
         bgm.pause();
         bgm.currentTime = 0;
         eventObjs[evPos].done = true;
+        changeStatusMode(3);
+        window.statusMode = 3;
+        statusMode = 3;
       }
     }
 
@@ -288,9 +297,12 @@ $(document).ready(function(){
     ctx.fillStyle = "#0095DD"
     ctx.textAlign = "center";
     ctx.fillText(judge.judge, judgePos.x, judgePos.y - 0.65 * judgePos.h);
-    var delayStr = (judge.delay >= 0)? "+" : "-"
-    delayStr += Math.round(Math.abs(judge.delay));
-    ctx.fillText(delayStr, judgePos.x, judgePos.y + 0.65 * judgePos.h);
+    if(judge.judge == "great" || judge.judge == "good"){
+      var delayStr = (judge.delay >= 0)? "+" : "-"
+      delayStr += Math.round(Math.abs(judge.delay));
+      ctx.fillText(delayStr, judgePos.x, judgePos.y + 0.65 * judgePos.h);
+    }
+    
   }
 
   //draw button on menus
@@ -375,24 +387,40 @@ $(document).ready(function(){
 
 
   function _compound(){
+    statusMode = window.statusMode;
     nowFrame += 1;
     nowTime = Date.now();
     elapseTime = nowTime - startTime;
     for(var key in keys){
       keys[key].update();
     }
+    for(var button in menuButtons){
+      if(menuButtons[button].trigger){
+        menuButtons[button].trigger = false;
+        menuButtons[button].clicked = true;
+      }
+      if(menuButtons[button].clicked && nowTime - menuButtons[button] > 1000){
+        menuButtons[button].clicked = false;
+      }
+    }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if(window.statusMode==0){
+    if(statusMode==0){
       // no files loaded
       drawJudgeBorder();
       drawoverlay();
     }
-    else if(window.statusMode==1){
+    else if(statusMode==1){
       // files loaded and ready to start game
+      // start the game
+      if(keys["Spacebar"].rose() || menuButtons["startButton"].clicked){
+        startGame();
+        changeStatusMode(2);
+        console.log("yes");
+      }
       drawJudgeBorder();
       drawMenu();
     }
-    else if(window.statusMode==2){
+    else if(statusMode==2){
       // in game
       hitNotePos = updatePos(elapseTime, hitNotePos, hitNoteObjs);
       //console.log(hitNotePos);
@@ -400,6 +428,10 @@ $(document).ready(function(){
         drawKeyDownBurst();
       }
       if(keys["Spacebar"].rose() || keys["f"].rose() || keys["j"].rose()){
+        if(useSfx){playSfx(sfx);}
+        /* TODO: might need to revamp the detectHit with detecting all the note instead of a position
+        
+        */
         var detectResult = detectHit(elapseTime, hitNoteObjs[hitNotePos]);
         switch(detectResult.judge){
           case "great":
@@ -430,7 +462,7 @@ $(document).ready(function(){
       drawHUD(combo, score);
       eventProcess(elapseTime, evPos);
     }
-    else if(window.statusMode==3){
+    else if(statusMode==3){
       ctx.beginPath();
       ctx.font = "20px Lucida Sans Unicode";
       ctx.fillStyle = "#0095DD"

@@ -75,7 +75,7 @@ function scoreInterpreter(scorestr){
     y: (metaData["judgePosY"])? checkAndConvert(metaData["judgePosY"], "number") : 100}
   var angle = 0;
 
-  time += offset;
+  time += offset * 1000;
   while(pos < scoreDataStr.length){
     var validflag = false;
     var nowString = scoreDataStr.substring(pos);
@@ -83,7 +83,7 @@ function scoreInterpreter(scorestr){
       var result = dataRegEx[regExType].exec(nowString);
       if(result != null){
         if(result.index == 0){
-          console.log("Pos " + pos + " Regex matched: " + regExType + ": " + result[0]);
+          //console.log("Pos " + pos + " Regex matched: " + regExType + ": " + result[0]);
           switch(regExType){
             case "bpm":
               bpm = checkAndConvert(result[0].substring(1, result[0].length - 1), "number");
