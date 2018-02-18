@@ -143,6 +143,7 @@ $(document).ready(function(){
   var maxCombo = 0;
   var judgeRes = {great: 0, good: 0, miss: 0};
   var lastJudge = {delay: 0, judge: "", timing: ""}
+  var totalJudge = {delay: 0, hitNotes: 0}; // to calculate average delay of notes hit.
 
 
   // ui buttons
@@ -171,6 +172,7 @@ $(document).ready(function(){
     maxCombo = 0;
     judgeRes = {great: 0, good: 0, miss: 0};
     lastJudge = {delay: 0, judge: "", timing: ""};
+    totalJudge = {delay: 0, hitNotes: 0};
     nowTime = Date.now();
     startTime = nowTime;
     bgm.play();
@@ -265,6 +267,8 @@ $(document).ready(function(){
     lastJudge.delay = delay;
     lastJudge.judge = judgeText;
     if(judgeText == "great" || judgeText == "good"){
+      totalJudge.delay += delay;
+      totalJudge.hitNotes += 1;
       combo += 1;
       if(combo > maxCombo){
         maxCombo = combo;
@@ -393,6 +397,10 @@ $(document).ready(function(){
     ctx.fillStyle = "#0095DD"
     ctx.textAlign = "right";
     ctx.fillText(score, canvas.width - 30, 30)
+    if(totalJudge.hitNotes > 0){
+      ctx.fillText("Average delay: " + Math.round(totalJudge.delay / totalJudge.hitNotes), canvas.width - 30, canvas.height - 30);
+    }
+    
   }
 
 
@@ -503,6 +511,7 @@ $(document).ready(function(){
       ctx.fillText("good: " + judgeRes.good, canvas.width/2, canvas.height/2 + 50);
       ctx.fillText("miss: " + judgeRes.miss, canvas.width/2, canvas.height/2 + 75);
       ctx.fillText("maxCombo: " + maxCombo, canvas.width/2, canvas.height/2 + 100);
+      ctx.fillText("Overall Delay: " + Math.round(totalJudge.delay / totalJudge.hitNotes) + "ms", canvas.width/2, canvas.height/2 + 125);
       
     }
   }
