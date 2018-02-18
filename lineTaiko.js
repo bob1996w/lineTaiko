@@ -133,6 +133,7 @@ $(document).ready(function(){
   var revNoteObjs = {}; // for drawing notes
   var hitNoteObjs = {}; // for timing the hits
   var eventObjs = {}; // reserved for events like song end
+  var visualObjs = {}; // for visuals on screen
   var judgeTime = {great: 35, good: 100};
   var hitNotePos = 0; // this is the place where a note is detected.
   var evPos = 0; // indeicate event collection's position.
@@ -154,9 +155,9 @@ $(document).ready(function(){
     dataObj = window.dataObj;
     hitNoteObjs = dataObj["s"];
     revNoteObjs = hitNoteObjs;
-    //console.log(hitNoteObjs);
     eventObjs = dataObj["e"];
-    //console.log(eventObjs);
+    visualObjs = dataObj["v"];
+    console.log(visualObjs);
     hitNotePos = 0;
     evPos = 0;
     bgm.src = window.musicBlobUrl;
@@ -167,8 +168,9 @@ $(document).ready(function(){
     }
     score = 0;
     combo = 0;
+    maxCombo = 0;
     judgeRes = {great: 0, good: 0, miss: 0};
-    lastJudge = {delay: 0, judge: "", timing: "", hitNotePosNext: false};
+    lastJudge = {delay: 0, judge: "", timing: ""};
     nowTime = Date.now();
     startTime = nowTime;
     bgm.play();
@@ -228,6 +230,33 @@ $(document).ready(function(){
           drawNote(revNoteObjs[index], elapseTime, scrollSpeed, false);
         }
       }
+    }
+  }
+
+  function drawVisual(visualObj, elapseTime, scrollSpeed){
+    var xpos = (visualObj.t - elapseTime) * scrollSpeed * visualObj.s / 1000 * Math.cos(deg2Rad(visualObj.angle)) + visualObj.approachJudgePos.x;
+    var ypos = (visualObj.t - elapseTime) * scrollSpeed * visualObj.s / -1000 * Math.sin(deg2Rad(visualObj.angle)) + visualObj.approachJudgePos.y;
+    if(xpos > -300 && xpos < canvas.width + 300 && ypos > -300 && ypos < canvas.height + 300){
+      switch(visualObj.type){
+        case "barLine":
+          var linePos = {x: judgePos.h * 0.5 * Math.cos(deg2Rad(visualObj.angle + 90)), y: judgePos.h * -0.5 * Math.sin(deg2Rad(visualObj.angle + 90))};
+          //var lineEndPos = {x: linePos.x + (linePos.x - xpos) * 2, y: linePos.y + (linePos.y - ypos) * 2};
+          ctx.beginPath();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = "#666666"
+          ctx.moveTo(xpos - linePos.x, ypos - linePos.y);
+          ctx.lineTo(xpos + linePos.x, ypos + linePos.y);
+          ctx.stroke();
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  function drawVisuals(elapseTime){
+    for (var index = visualObjs.length - 1; index >=0; index --){
+      drawVisual(visualObjs[index], elapseTime, scrollSpeed);
     }
   }
 
@@ -457,6 +486,7 @@ $(document).ready(function(){
         
       }
       drawJudgeBorder();
+      drawVisuals(elapseTime);
       drawPlayField(elapseTime, hitNotePos);
       drawJudge(lastJudge, judgePos);
       drawHUD(combo, score);

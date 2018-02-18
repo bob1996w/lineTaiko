@@ -43,6 +43,7 @@ var dataRegEx = {
   "step": /^,/,
   "note": /^\d/,
   "end": /^E/,
+  "barLine": /^\|/,
 }
 
 /*
@@ -64,10 +65,11 @@ function scoreInterpreter(scorestr){
   var scoreDataStr = rawLines.filter(line => line[0] != '#').map(line => line.replace(/\s/g, '')).join('');
   //console.log(metaData);
 
-  var time = 0; // in ms
-  var notes = [];  // Array of all the Notes
-  var events = []; // Array of all the events(non-notes)
-  var discards = []; // discarded characters
+  var time = 0;       // in ms
+  var notes = [];     // Array of all the Notes
+  var events = [];    // Array of all the events(non-notes)
+  var visuals = [];   // Array of all the visual objects (e.g. bar line)
+  var discards = [];  // discarded characters
   var pos = 0;
 
   var noteSpeed = 1.0;
@@ -112,7 +114,11 @@ function scoreInterpreter(scorestr){
               var evObj = {t: time, type: "end", done: false};
               events.push(evObj);
               break;
-            case "exCommand":
+            case "barLine":
+              var visualObj = {t: time, type:"barLine", s: noteSpeed, angle: angle, approachJudgePos: {x: judgePos.x, y: judgePos.y}};
+              visuals.push(visualObj);
+              break;
+              case "exCommand":
               // NOTE: reserved for future extension of data file
               var command = result[0].trimHeadTail().split("=");
               switch(command[0]){
@@ -143,6 +149,7 @@ function scoreInterpreter(scorestr){
   alert("Scanned " + notes.length + " notes\n" + discards.length + " discarded");
   metaData["s"] = notes;
   metaData["e"] = events;
+  metaData["v"] = visuals;
   return metaData;
 }
 
