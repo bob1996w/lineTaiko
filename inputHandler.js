@@ -51,7 +51,7 @@ $(document).ready(function(){
     }
     var sfxBlobUrl;
     var sfxFile = $("#sfxFile");
-    console.log("sfxFile = " + sfxFile.val())
+    //console.log("sfxFile = " + sfxFile.val())
     if(isAudio(sfxFile.val()) && isValid(sfxFile.val())){
       sfxBlobUrl = (window.URL || window.webkitURL).createObjectURL(sfxFile.prop('files')[0]);
     }else {

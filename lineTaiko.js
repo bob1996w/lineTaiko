@@ -156,14 +156,14 @@ $(document).ready(function(){
     revNoteObjs = hitNoteObjs;
     //console.log(hitNoteObjs);
     eventObjs = dataObj["e"];
-    console.log(eventObjs);
+    //console.log(eventObjs);
     hitNotePos = 0;
     evPos = 0;
     bgm.src = window.musicBlobUrl;
     if(window.sfxBlobUrl != ""){
       useSfx = true;
       sfx.src = window.sfxBlobUrl;
-      console.log("SFX: " + sfx.src);
+      //console.log("SFX: " + sfx.src);
     }
     score = 0;
     combo = 0;
@@ -176,7 +176,7 @@ $(document).ready(function(){
 
   function eventProcess(elapseTime, evPos){
     if(elapseTime > eventObjs[evPos].t && eventObjs[evPos].done == false){
-      console.log(eventObjs[evPos]);
+      //console.log(eventObjs[evPos]);
       if(eventObjs[evPos].type == "end"){
         bgm.pause();
         bgm.currentTime = 0;
@@ -193,13 +193,13 @@ $(document).ready(function(){
   // TODO: read the hit label and don't draw when the note is hit
   function drawNote(noteObj, elapseTime, scrollSpeed, special){
     var xpos = (noteObj.t - elapseTime) * scrollSpeed * noteObj.s / 1000 * Math.cos(deg2Rad(noteObj.angle)) + noteObj.approachJudgePos.x;
-    var ypos = (noteObj.t - elapseTime) * scrollSpeed * noteObj.s / 1000 * Math.sin(deg2Rad(noteObj.angle)) + noteObj.approachJudgePos.y;
+    var ypos = (noteObj.t - elapseTime) * scrollSpeed * noteObj.s / -1000 * Math.sin(deg2Rad(noteObj.angle)) + noteObj.approachJudgePos.y;
     if(xpos > -300 && xpos < canvas.width + 300 && ypos > -300 && ypos < canvas.height + 300 && !noteObj.hit){
 
       if(special){
         ctx.beginPath();
         ctx.fillStyle = "black"
-        ctx.arc(xpos, judgePos.y, 25, 0, Math.PI*2);
+        ctx.arc(xpos, ypos, 25, 0, Math.PI*2);
         ctx.fill();
         ctx.strokeStyle = "orange"
         ctx.lineWidth = 5;
@@ -208,7 +208,7 @@ $(document).ready(function(){
       }else{
         ctx.beginPath();
         ctx.fillStyle = "orange"
-        ctx.arc(xpos, judgePos.y, 25, 0, Math.PI*2);
+        ctx.arc(xpos, ypos, 25, 0, Math.PI*2);
         ctx.fill();
         ctx.strokeStyle = "black"
         ctx.lineWidth = 5;
@@ -252,7 +252,7 @@ $(document).ready(function(){
     }
     else if(elapseTime - hitNoteObjs[hitNotePos].t > judgeTime.good){
       judgeRes.miss ++;
-      updateLastJudge("miss", judgeTime.good);
+      updateLastJudge(judgeTime.good, "miss");
       return hitNotePos + 1;
     }
     else {
@@ -415,7 +415,7 @@ $(document).ready(function(){
       if(keys["Spacebar"].rose() || menuButtons["startButton"].clicked){
         startGame();
         changeStatusMode(2);
-        console.log("yes");
+        //console.log("yes");
       }
       drawJudgeBorder();
       drawMenu();

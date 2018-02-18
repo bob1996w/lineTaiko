@@ -23,10 +23,15 @@ function checkAndConvert(data, type){
       if(/^[0-9]+$/.test(data) || /^[0-9]+\.[0-9]+$/.test(data)){
         return eval(data);
       }else{
-        errMsg(1, type);
+        errMsg(1, "" + type + ": " + data);
         return 1;
       }
   }
+}
+
+// cut off the first and last char in a string
+String.prototype.trimHeadTail = function (){
+  return this.substring(1, this.length - 1);
 }
 
 // all regex's in data files
@@ -49,7 +54,7 @@ note obj:
       1: normal note
     s: note speed(multiplier) of this note
     hit: whether this note is hit
-    angle: the andgle of approching judgePos
+    angle: the andgle of approching judgePos in degree (+x = 0, counterclockwise)
     judgePos: the position it should go toward to
 */
 
@@ -86,21 +91,20 @@ function scoreInterpreter(scorestr){
           //console.log("Pos " + pos + " Regex matched: " + regExType + ": " + result[0]);
           switch(regExType){
             case "bpm":
-              bpm = checkAndConvert(result[0].substring(1, result[0].length - 1), "number");
+              bpm = checkAndConvert(result[0].trimHeadTail(), "number");
               noteLength = 60000.0 / bpm / (div/4);
               break;
             case "noteSpeed":
-              noteSpeed = checkAndConvert(result[0].substring(1, result[0].length - 1), "number");
+              noteSpeed = checkAndConvert(result[0].trimHeadTail(), "number");
               break;
             case "division":
-              div = checkAndConvert(result[0].substring(1, result[0].length - 1), "number");
+              div = checkAndConvert(result[0].trimHeadTail(), "number");
               noteLength = 60000.0 / bpm / (div/4);
               break;
             case "step":
               time += noteLength;
               break;
             case "note":
-              // TODO: add a label to indicate that the note has been hit(for drawing)
               var noteObj = {t: time, n: 1, s: noteSpeed, hit: false, angle: angle, approachJudgePos: {x: judgePos.x, y: judgePos.y}};
               notes.push(noteObj);
               break;
@@ -110,6 +114,15 @@ function scoreInterpreter(scorestr){
               break;
             case "exCommand":
               // NOTE: reserved for future extension of data file
+              var command = result[0].trimHeadTail().split("=");
+              switch(command[0]){
+                case "a":
+                  angle = checkAndConvert(command[1], "number");
+                  break;
+                default:
+                  console.log("Unknown exCommand: " + command[0] + "=" + command[1]);
+                  break;
+              }
               break;
             default:
               errMsg(2);
@@ -143,5 +156,5 @@ function errMsg(errN, msgData){
     default:
       msg = "Something goes wrong.";
   }
-  alert("Error " + errN + ":\n" + msg);
+  alert("Error " + errN + ":\n" + msg + "\n" + msgData);
 }
