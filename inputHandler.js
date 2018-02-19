@@ -34,7 +34,17 @@ function failValidation(msg){
 // manage the switching of status
 function changeStatusMode(toStatus){
   window.statusMode = toStatus
+  if(toStatus == 1){
+    $("#inputForm").hide();
+  }
+  else if(toStatus == 3){
+    $("#inputForm").show();
+  }
   return toStatus;
+}
+
+function toggleForm(){
+  $("#inputForm").toggle();
 }
 
 // start when document is ready
@@ -71,7 +81,7 @@ $(document).ready(function(){
     }).done(function(){
       //alert("Done");
       changeStatusMode(1);
-      $(".inputForm").hide();
+      document.getElementById("mainGame").focus();
     }).fail(function(){
       alert("Something went wrong while fetching data file.")
     });

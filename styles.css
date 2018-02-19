@@ -1,22 +1,135 @@
+
 * {
+  box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
   padding: 0;
-  margin: 20px;
+  margin: 0;
   font-family: Lucida Sans Unicode;
 }
+
+/* page */
+html, body, #pageContainer {
+  margin: 0;
+  width: 100vw;
+  height: 100vh;
+}
+
+#pageContainer {
+  display: flex;
+  /* default inline, so we change to "column" to stack vertically */
+  flex-direction: column;
+}
+
+/* CLASSES */
+/* LRBlock, left, right: for two-part sections */
+.LRBlock{
+  display: flex;
+  flex-direction: row;
+}
+
+.left {
+  flex: 1;
+  padding: 0 0 0 5px;
+}
+
+.right {
+  flex: 1;
+  padding: 0 5px 0 0;
+  text-align: right;
+}
+
+/* HEADER */
+#HEADER {
+  /* always on top of screen */
+  background-color: #272727;
+  color: #bbbbbb;
+}
+
+/* CONTENT */
+#CONTENT {
+  flex: 1; /* takes the remaining vertical space inside the #pageContainer */
+  overflow: auto;
+  align-items: center;
+  justify-content: center;
+}
+
+.contentPane {
+  display: flex;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  padding: 10px;
+  overflow: auto;
+  margin: 0 auto;
+  justify-content: center;
+}
+
 canvas {
   background: #eee;
   display: block;
-  margin: 0 auto;
 }
-.header {
-  border:2px orange solid;
-}
-.inputForm {
+
+/* form */
+#inputForm {
   max-width: 500px;
   border:2px #0095DD solid;
   border-radius: 5px;
-  margin: 10px;
   font-size: 20px;
+}
+
+.form-outer li {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  margin: auto;
+}
+
+.form-outer > li > label,
+.form-outer li p {
+  flex: 1 0 120px;
+  max-width: 220px;
+}
+
+.form-outer > li > label + *,{
+  flex: 1 0 220px;
+}
+
+.form-inner {
+  flex: 1 0 220px;
+  overflow-wrap: auto;
+  justify-content: center;
+}
+
+.bigButton {
+  margin: 10px;
+  padding: 5px 10px 5px !important;
+  font-size: 18px !important;
+  border-radius: 10px;
+  -moz-border-radius: 10px;
+  -webkit-border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+  -moz-box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+  -webkit-box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+}
+
+#formPlayButton {
+  background-color: rgb(252, 172, 0);
+  font-weight: bold;
+  text-shadow: 1px 1px rgb(252, 172, 0);
+  color: #ffffff;
+  border: 1px solid rgb(252, 172, 0);
+}
+
+#formClearButton {
+  background-color: #464646;
+  font-weight: bold;
+  text-shadow: 1px 1px #464646;
+  color: #ffffff;
+  border: 1px solid #464646;
+}
+
+/* FOOTER */
+#FOOTER{
+  background-color: #272727;
+  color: #bbbbbb;
 }

@@ -400,7 +400,6 @@ $(document).ready(function(){
     if(totalJudge.hitNotes > 0){
       ctx.fillText("Average delay: " + Math.round(totalJudge.delay / totalJudge.hitNotes), canvas.width - 30, canvas.height - 30);
     }
-    
   }
 
 
@@ -491,7 +490,6 @@ $(document).ready(function(){
         if(detectResult.hitNotePosNext){
           hitNotePos += 1;
         }
-        
       }
       drawJudgeBorder();
       drawVisuals(elapseTime);

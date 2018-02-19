@@ -19,25 +19,50 @@
 </head>
 
 <body>
-  <div class="blockarea">
-    <div class="header">
-      <p>A simple Rhythm Game</p>
+  <div id="pageContainer">
+    <div id="HEADER" class="LRBlock">
+      <div id="TITLE" class="left">
+        <h1>A simple Rhythm Game</h1>
+      </div>
     </div>
-    <canvas id="mainGame" width="480" height="320"></canvas>
+    <div id="CONTENT">
+      <div id="game" class="contentPane">
+        <canvas id="mainGame" width="480" height="320"></canvas>
+      </div>
+      
+      <form id="getFiles">
+        <div id="inputForm" class="contentPane">
+          <ul class="form-outer">
+            <li>
+              <label for="musicFile">Music File:</label>
+              <input type="file" name="musicFile" id="musicFile"></input>
+            </li>
+            <li>
+              <label for="dataFile">Data File:</label>
+              <input type="file" name="dataFile" id="dataFile"></input>
+            </li>
+            <li>
+              <label for="sfxFile">SFX File (optional):</label>
+              <input type="file" name="sfxFile" id="sfxFile"></input>
+            </li>
+            <li class="form-inner">
+              <input type="submit" id="formPlayButton" class="bigButton" value="Play!"></input>
+              <input type="button" id="formClearButton" class="bigButton" value="Clear" onclick="this.form.reset()"></input>
+            </li>
+          </ul>
+        </div>
+      </form>
+    </div> 
+    <div id="FOOTER" class="LRBlock">
+      <span class="left">
+        <h3>Controls: Use Space/f/j for hitting note.</h3>
+      </span>
+      <span class="right">
+        <p>by bob1996w</p>
+      </span>
+    </div>
   </div>
-  <div class="inputForm">
-    <form id="getFiles">
-      Music File:<input type="file" name="musicFile" id="musicFile"></input><br>
-      Data File:<input type="file" name="dataFile" id="dataFile"></input><br>
-      SFX File (Optional):<input type="file" name="sfxFile" id="sfxFile"></input><br>
-      <input type="submit" value="Send"></input>
-      <input type="button" value="Clear" onclick="this.form.reset()"></input>
-    </form>
-  </div>
-  <!-- <a id="toGoogle" href="http://www.google.com.tw">To Google</a> -->
-  <div class="blockarea">
-    <p>Controls: Use Space/f/j for hitting note.</p>
-  </div>
+  
 </body>
 
 </html>
