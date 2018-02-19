@@ -20,6 +20,14 @@ function playSfx(sfx){
   sfx.play();
 }
 
+function judgeResInit(judgeTimeList){
+  var judgeResList = {};
+  for(var j in judgeTimeList){
+    judgeResList[j] = 0;
+  }
+  judgeResList["miss"] = 0;
+  return judgeResList;
+}
 /*
   KeyHandler class that keep on listening on keys.
 
@@ -35,12 +43,20 @@ var KeyHandler = function () {
   this.nowStatus = false;
   this.rise = false;
   this.fall = false;
+  this.lastRise = Date.now();
+  this.lastFall = Date.now();
 };
 KeyHandler.prototype.fell = function(){
   return this.fall;
 }
+KeyHandler.prototype.lastFell = function(){
+  return this.lastFall;
+}
 KeyHandler.prototype.rose = function(){
   return this.rise;
+}
+KeyHandler.prototype.lastRose = function(){
+  return this.lastRise;
 }
 KeyHandler.prototype.isHolding = function(){
   return this.nowStatus;
@@ -51,9 +67,11 @@ KeyHandler.prototype.trigger = function(status){
     if(!this.nowStatus){
       // press and hold the key will fire multiple keyDown events
       this.keyDownTrigger = true;
+      this.lastRise = Date.now();
     }
   }else{
     this.keyUpTrigger = true;
+    this.lastFall = Date.now();
   }
 }
 KeyHandler.prototype.update = function(){
@@ -85,6 +103,7 @@ $(document).ready(function(){
 
   // initialize KeyHandler Objects
   var acceptKeys = ["Spacebar", "ArrowLeft", "ArrowRight", "f", "j"];
+  var playKeys = ["Spacebar", "f", "j"];
   var keys = {};
   for(var index in acceptKeys){
     keys[acceptKeys[index]] = new KeyHandler();
@@ -134,14 +153,15 @@ $(document).ready(function(){
   var hitNoteObjs = {}; // for timing the hits
   var eventObjs = {}; // reserved for events like song end
   var visualObjs = {}; // for visuals on screen
-  var judgeTime = {great: 35, good: 100};
   var hitNotePos = 0; // this is the place where a note is detected.
   var evPos = 0; // indeicate event collection's position.
   // game variables
   var score = 0;
   var combo = 0;
   var maxCombo = 0;
-  var judgeRes = {great: 0, good: 0, miss: 0};
+  var judgeTime = {perfect: 20, great: 45, good: 100};
+  var judgeColor = {perfect: "#ffff00", great: "#ff7700", good: "#06bf00", miss:"#515151"};
+  var judgeRes = judgeResInit(judgeTime);
   var lastJudge = {delay: 0, judge: "", timing: ""}
   var totalJudge = {delay: 0, hitNotes: 0}; // to calculate average delay of notes hit.
 
@@ -158,7 +178,7 @@ $(document).ready(function(){
     revNoteObjs = hitNoteObjs;
     eventObjs = dataObj["e"];
     visualObjs = dataObj["v"];
-    console.log(visualObjs);
+    //console.log(visualObjs);
     hitNotePos = 0;
     evPos = 0;
     bgm.src = window.musicBlobUrl;
@@ -170,7 +190,7 @@ $(document).ready(function(){
     score = 0;
     combo = 0;
     maxCombo = 0;
-    judgeRes = {great: 0, good: 0, miss: 0};
+    judgeRes = judgeResInit(judgeTime);
     lastJudge = {delay: 0, judge: "", timing: ""};
     totalJudge = {delay: 0, hitNotes: 0};
     nowTime = Date.now();
@@ -266,7 +286,7 @@ $(document).ready(function(){
   function updateLastJudge(delay, judgeText){
     lastJudge.delay = delay;
     lastJudge.judge = judgeText;
-    if(judgeText == "great" || judgeText == "good"){
+    if(judgeText == "perfect" || judgeText == "great" || judgeText == "good"){
       totalJudge.delay += delay;
       totalJudge.hitNotes += 1;
       combo += 1;
@@ -304,6 +324,7 @@ $(document).ready(function(){
       hitNotePosNext: false
     };
     judgeObj["delay"] = delay;
+    /*
     if(delay > judgeTime.good){ // too late
       judgeObj.judge = "miss";
       judgeObj.timing = "";
@@ -321,18 +342,48 @@ $(document).ready(function(){
       judgeObj.timing = "early"
       judgeObj.hitNotePosNext = true;
     }
+    */
+    timing = (delay > 0)? "late" : (delay < 0)? "fast" : "";
+    var delayAbs = Math.abs(delay);
+    /*
+    for(var judgeType in judgeTime){
+      if(delayAbs < judgeTime[judgeType]){
+        judgeObj.judge = judgeType;
+        judgeObj.hitNotePosNext = true;
+      }
+    }*/
+    if(delayAbs < judgeTime.perfect){
+      judgeObj.judge = "perfect";
+      judgeObj.hitNotePosNext = true;
+    }
+    else if(delayAbs < judgeTime.great){
+      judgeObj.judge = "great";
+      judgeObj.hitNotePosNext = true;
+    }
+    else if(delayAbs < judgeTime.good){
+      judgeObj.judge = "good";
+      judgeObj.hitNotePosNext = true;
+    }
+    else if(judgeObj.judge == "" && delay > 0){
+      judgeObj.judge = "miss";
+      judgeObj.hitNotePosNext = true;
+    }
     return judgeObj;
   }
 
   function drawJudge(judge, judgePos){
     ctx.beginPath();
     ctx.font = "20px Lucida Sans Unicode";
-    ctx.fillStyle = "#0095DD"
+    ctx.strokeStyle = "#000000"
     ctx.textAlign = "center";
+    ctx.lineWidth = 2;
+    ctx.strokeText(judge.judge, judgePos.x, judgePos.y - 0.65 * judgePos.h);
+    ctx.fillStyle = judgeColor[judge.judge];
     ctx.fillText(judge.judge, judgePos.x, judgePos.y - 0.65 * judgePos.h);
-    if(judge.judge == "great" || judge.judge == "good"){
+    if(judge.judge == "perfect" || judge.judge == "great" || judge.judge == "good"){
       var delayStr = (judge.delay >= 0)? "+" : "-"
       delayStr += Math.round(Math.abs(judge.delay));
+      ctx.fillStyle = "#0095DD";
       ctx.fillText(delayStr, judgePos.x, judgePos.y + 0.65 * judgePos.h);
     }
     
@@ -421,6 +472,46 @@ $(document).ready(function(){
     }
   }
 
+  function drawJudgeText(judgeText, result, x, y){
+    ctx.beginPath();
+    ctx.font = "20px Lucida Sans Unicode";
+    ctx.strokeStyle = "#000000";
+    ctx.textAlign = "left";
+    ctx.lineWidth = 2;
+    ctx.strokeText(judgeText, x, y);
+    ctx.fillStyle = judgeColor[judgeText];
+    ctx.fillText(judgeText, x, y);
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#0095DD";
+    ctx.fillText(result, x + 190, y);
+  }
+
+  function drawJudgeResult(x, y){
+    ctx.beginPath();
+    ctx.font = "20px Lucida Sans Unicode";
+    ctx.fillStyle = "#0095DD";
+    ctx.textAlign = "left";
+    ctx.fillText("maxCombo", x + 5, y + 150);
+    ctx.textAlign = "right";
+    ctx.fillText(maxCombo, x + 195, y + 150);
+    drawJudgeText("perfect", judgeRes.perfect, x + 5, y + 30);
+    drawJudgeText("great", judgeRes.great, x + 5, y + 55);
+    drawJudgeText("good", judgeRes.good, x + 5, y + 80);
+    drawJudgeText("miss", judgeRes.miss, x + 5, y + 105);
+    ctx.rect(x, y, 200, 165);
+    ctx.stroke();
+ }
+  function drawResultScreen(){
+    ctx.beginPath();
+    ctx.font = "20px Lucida Sans Unicode";
+    ctx.fillStyle = "#0095DD";
+    ctx.textAlign = "center";
+    ctx.fillText("Song End", canvas.width/2, canvas.height*0.15);
+    ctx.fillText("Overall Delay: " + Math.round(totalJudge.delay / totalJudge.hitNotes) + "ms", canvas.width/2, canvas.height/2 + 125);
+    drawJudgeResult(canvas.width/2 - 100, 70);
+    
+  }
+
 
   function _compound(){
     statusMode = window.statusMode;
@@ -463,32 +554,39 @@ $(document).ready(function(){
       if(keys["Spacebar"].isHolding() || keys["f"].isHolding() || keys["j"].isHolding()){
         drawKeyDownBurst();
       }
-      if(keys["Spacebar"].rose() || keys["f"].rose() || keys["j"].rose()){
-        if(useSfx){playSfx(sfx);}
-        /* TODO: might need to revamp the detectHit with detecting all the note instead of a position
-        
-        */
-        var detectResult = detectHit(elapseTime, hitNoteObjs[hitNotePos]);
-        switch(detectResult.judge){
-          case "great":
-            judgeRes.great++;
-            hitNoteObjs[hitNotePos].hit = true;
-            updateLastJudge(detectResult.delay, detectResult.judge);
-            break;
-          case "good":
-            judgeRes.good++;
-            hitNoteObjs[hitNotePos].hit = true;
-            updateLastJudge(detectResult.delay, detectResult.judge);
-            break;
-          case "miss":
-            judgeRes.miss++;
-            updateLastJudge(detectResult.delay, detectResult.judge);
-            break;
-          default:
-            break;
-        }
-        if(detectResult.hitNotePosNext){
-          hitNotePos += 1;
+      for(var i = 0; i < playKeys.length; i++){
+        if(keys[playKeys[i]].rose()){
+          if(useSfx){playSfx(sfx);}
+          /* TODO: might need to revamp the detectHit with detecting all the note instead of a position
+          
+          */
+          var detectResult = detectHit(keys[playKeys[i]].lastRose() - startTime, hitNoteObjs[hitNotePos]);
+          switch(detectResult.judge){
+            case "perfect":
+              judgeRes.perfect++;
+              hitNoteObjs[hitNotePos].hit = true;
+              updateLastJudge(detectResult.delay, detectResult.judge);
+              break;
+            case "great":
+              judgeRes.great++;
+              hitNoteObjs[hitNotePos].hit = true;
+              updateLastJudge(detectResult.delay, detectResult.judge);
+              break;
+            case "good":
+              judgeRes.good++;
+              hitNoteObjs[hitNotePos].hit = true;
+              updateLastJudge(detectResult.delay, detectResult.judge);
+              break;
+            case "miss":
+              judgeRes.miss++;
+              updateLastJudge(detectResult.delay, detectResult.judge);
+              break;
+            default:
+              break;
+          }
+          if(detectResult.hitNotePosNext){
+            hitNotePos += 1;
+          }
         }
       }
       drawJudgeBorder();
@@ -499,18 +597,7 @@ $(document).ready(function(){
       eventProcess(elapseTime, evPos);
     }
     else if(statusMode==3){
-      ctx.beginPath();
-      ctx.font = "20px Lucida Sans Unicode";
-      ctx.fillStyle = "#0095DD"
-      ctx.textAlign = "center";
-      ctx.fillText("Song End", canvas.width/2, canvas.height*0.2);
-      ctx.fillText("Results:", canvas.width/2, canvas.height/2);
-      ctx.fillText("great: " + judgeRes.great, canvas.width/2, canvas.height/2 + 25);
-      ctx.fillText("good: " + judgeRes.good, canvas.width/2, canvas.height/2 + 50);
-      ctx.fillText("miss: " + judgeRes.miss, canvas.width/2, canvas.height/2 + 75);
-      ctx.fillText("maxCombo: " + maxCombo, canvas.width/2, canvas.height/2 + 100);
-      ctx.fillText("Overall Delay: " + Math.round(totalJudge.delay / totalJudge.hitNotes) + "ms", canvas.width/2, canvas.height/2 + 125);
-      
+      drawResultScreen();
     }
   }
   setInterval(_compound, 5); //run every 10ms
