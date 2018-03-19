@@ -41,7 +41,8 @@ var dataRegEx = {
   "division": /^\{\d+(\.\d+)?\}/,
   "exCommand": /^\'[a-zA-Z_][a-zA-Z0-9_]*=[a-zA-Z0-9]+\'/,
   "step": /^,/,
-  "note": /^\d/,
+  "note": /^[1-9]/,
+  "hiddenNote": /^0/,
   "end": /^E/,
   "barLine": /^\|/,
 }
@@ -70,6 +71,10 @@ function scoreInterpreter(scorestr){
   var events = [];    // Array of all the events(non-notes)
   var visuals = [];   // Array of all the visual objects (e.g. bar line)
   var discards = [];  // discarded characters
+  var noteDigest = {
+    "0": 0,
+    "1": 0
+  };// Total of each kinds of notes
   var pos = 0;
 
   var noteSpeed = 1.0;
@@ -107,8 +112,14 @@ function scoreInterpreter(scorestr){
               time += noteLength;
               break;
             case "note":
-              var noteObj = {t: time, n: 1, s: noteSpeed, hit: false, angle: angle, approachJudgePos: {x: judgePos.x, y: judgePos.y}};
+              var noteObj = {t: time, n: 1, s: noteSpeed, hit: false, hidden: false, angle: angle, approachJudgePos: {x: judgePos.x, y: judgePos.y}};
               notes.push(noteObj);
+              noteDigest[1] += 1;
+              break;
+            case "hiddenNote":
+              var noteObj = {t: time, n: 0, s: noteSpeed, hit: false, hidden: true, angle: angle, approachJudgePos: {x: judgePos.x, y: judgePos.y}};
+              notes.push(noteObj);
+              noteDigest[0] += 1;
               break;
             case "end":
               var evObj = {t: time, type: "end", done: false};
@@ -150,6 +161,7 @@ function scoreInterpreter(scorestr){
   metaData["s"] = notes;
   metaData["e"] = events;
   metaData["v"] = visuals;
+  metaData["digest"] = noteDigest;
   return metaData;
 }
 

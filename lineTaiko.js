@@ -20,12 +20,15 @@ function playSfx(sfx){
   sfx.play();
 }
 
-function judgeResInit(judgeTimeList){
+function judgeResInit(judgeTimeList, noteDigest){
   var judgeResList = {};
-  for(var j in judgeTimeList){
-    judgeResList[j] = 0;
+  for(var noteType in noteDigest) {
+    judgeResList[noteType] = {};
+    for(var judgeType in judgeTimeList) {
+      judgeResList[noteType][judgeType] = 0;
+    }
+    judgeResList[noteType]["miss"] = 0;
   }
-  judgeResList["miss"] = 0;
   return judgeResList;
 }
 /*
@@ -153,6 +156,7 @@ $(document).ready(function(){
   var hitNoteObjs = {}; // for timing the hits
   var eventObjs = {}; // reserved for events like song end
   var visualObjs = {}; // for visuals on screen
+  var noteDigest = {}; // total notes of each kind; for calculating score
   var hitNotePos = 0; // this is the place where a note is detected.
   var evPos = 0; // indeicate event collection's position.
   // game variables
@@ -160,8 +164,11 @@ $(document).ready(function(){
   var combo = 0;
   var maxCombo = 0;
   var judgeTime = {perfect: 20, great: 45, good: 100};
+  var judgeScore = {perfect: 1, great: 0.8, good: 0.5, miss: 0};
+  var noteTypeScore = {"0": 1, "1": 2}
+  var totalScoreRep = 0;
   var judgeColor = {perfect: "#ffff00", great: "#ff7700", good: "#06bf00", miss:"#515151"};
-  var judgeRes = judgeResInit(judgeTime);
+  var judgeRes = {}
   var lastJudge = {delay: 0, judge: "", timing: ""}
   var totalJudge = {delay: 0, hitNotes: 0}; // to calculate average delay of notes hit.
 
@@ -178,6 +185,7 @@ $(document).ready(function(){
     revNoteObjs = hitNoteObjs;
     eventObjs = dataObj["e"];
     visualObjs = dataObj["v"];
+    noteDigest = dataObj["digest"];
     //console.log(visualObjs);
     hitNotePos = 0;
     evPos = 0;
@@ -190,9 +198,10 @@ $(document).ready(function(){
     score = 0;
     combo = 0;
     maxCombo = 0;
-    judgeRes = judgeResInit(judgeTime);
+    judgeRes = judgeResInit(judgeTime, noteDigest);
     lastJudge = {delay: 0, judge: "", timing: ""};
     totalJudge = {delay: 0, hitNotes: 0};
+    totalScoreRep = getTotalScoreRep(noteDigest);
     nowTime = Date.now();
     startTime = nowTime;
     bgm.play();
@@ -244,7 +253,7 @@ $(document).ready(function(){
 
   function drawPlayField(elapseTime, hitNotePos){
     for (var index = revNoteObjs.length - 1; index >= 0; index--){
-      if(revNoteObjs[index].n > 0){
+      if(revNoteObjs[index].n > 0 && !revNoteObjs[index].hidden){
         if(index == hitNotePos){
           drawNote(revNoteObjs[index], elapseTime, scrollSpeed, true);
         }
@@ -282,6 +291,22 @@ $(document).ready(function(){
     }
   }
 
+  function getTotalScoreRep(noteDigest) {
+    var totalScoreRep = 0;
+    for(var noteType in noteDigest) {
+      totalScoreRep += noteTypeScore[noteType] * judgeScore["perfect"] * noteDigest[noteType]
+    }
+    return totalScoreRep;
+  }
+  function updateScore(judgeRes, noteDigest) {
+    var totalUserScoreRep = 0;
+    for(var noteType in noteDigest) {
+      for(var judgeName in judgeScore) {
+        totalUserScoreRep += noteTypeScore[noteType] * judgeScore[judgeName] * judgeRes[noteType][judgeName]
+      }
+    }
+    return ~~(1000000 * totalUserScoreRep / totalScoreRep)
+  }
   // updates the last judge result and combo status
   function updateLastJudge(delay, judgeText){
     lastJudge.delay = delay;
@@ -297,6 +322,7 @@ $(document).ready(function(){
     else{
       combo = 0;
     }
+    score = updateScore(judgeRes, noteDigest);
   }
 
   function updatePos(elapseTime, pos, objs){
@@ -304,7 +330,7 @@ $(document).ready(function(){
       return hitNotePos;
     }
     else if(elapseTime - hitNoteObjs[hitNotePos].t > judgeTime.good){
-      judgeRes.miss ++;
+      judgeRes[hitNoteObjs[hitNotePos].n].miss ++;
       updateLastJudge(judgeTime.good, "miss");
       return hitNotePos + 1;
     }
@@ -486,6 +512,15 @@ $(document).ready(function(){
     ctx.fillText(result, x + 190, y);
   }
 
+
+  function getJudgeTotal(judgeName) {
+    var thisJudgeTotal = 0;
+    for (var noteType in noteDigest) {
+      thisJudgeTotal += judgeRes[noteType][judgeName]
+    }
+    return thisJudgeTotal;
+  }
+
   function drawJudgeResult(x, y){
     ctx.beginPath();
     ctx.font = "20px Lucida Sans Unicode";
@@ -494,22 +529,24 @@ $(document).ready(function(){
     ctx.fillText("maxCombo", x + 5, y + 150);
     ctx.textAlign = "right";
     ctx.fillText(maxCombo, x + 195, y + 150);
-    drawJudgeText("perfect", judgeRes.perfect, x + 5, y + 30);
-    drawJudgeText("great", judgeRes.great, x + 5, y + 55);
-    drawJudgeText("good", judgeRes.good, x + 5, y + 80);
-    drawJudgeText("miss", judgeRes.miss, x + 5, y + 105);
+
+    drawJudgeText("perfect", getJudgeTotal("perfect"), x + 5, y + 30);
+    drawJudgeText("great", getJudgeTotal("great"), x + 5, y + 55);
+    drawJudgeText("good", getJudgeTotal("good"), x + 5, y + 80);
+    drawJudgeText("miss", getJudgeTotal("miss"), x + 5, y + 105);
     ctx.rect(x, y, 200, 165);
     ctx.stroke();
  }
   function drawResultScreen(){
     ctx.beginPath();
-    ctx.font = "20px Lucida Sans Unicode";
+    ctx.font = "30px Lucida Sans Unicode";
     ctx.fillStyle = "#0095DD";
     ctx.textAlign = "center";
+    ctx.fillText(score, canvas.width/2, 85)
+    ctx.font = "20px Lucida Sans Unicode";
     ctx.fillText("Song End", canvas.width/2, canvas.height*0.15);
     ctx.fillText("Overall Delay: " + Math.round(totalJudge.delay / totalJudge.hitNotes) + "ms", canvas.width/2, canvas.height/2 + 125);
-    drawJudgeResult(canvas.width/2 - 100, 70);
-    
+    drawJudgeResult(canvas.width/2 - 100, 100);
   }
 
 
@@ -561,24 +598,25 @@ $(document).ready(function(){
           
           */
           var detectResult = detectHit(keys[playKeys[i]].lastRose() - startTime, hitNoteObjs[hitNotePos]);
+          var thisNoteType = hitNoteObjs[hitNotePos].n;
           switch(detectResult.judge){
             case "perfect":
-              judgeRes.perfect++;
+              judgeRes[thisNoteType].perfect++;
               hitNoteObjs[hitNotePos].hit = true;
               updateLastJudge(detectResult.delay, detectResult.judge);
               break;
             case "great":
-              judgeRes.great++;
+              judgeRes[thisNoteType].great++;
               hitNoteObjs[hitNotePos].hit = true;
               updateLastJudge(detectResult.delay, detectResult.judge);
               break;
             case "good":
-              judgeRes.good++;
+              judgeRes[thisNoteType].good++;
               hitNoteObjs[hitNotePos].hit = true;
               updateLastJudge(detectResult.delay, detectResult.judge);
               break;
             case "miss":
-              judgeRes.miss++;
+              judgeRes[thisNoteType].miss++;
               updateLastJudge(detectResult.delay, detectResult.judge);
               break;
             default:
