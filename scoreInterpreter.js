@@ -20,8 +20,14 @@ function convertMetaData(lines){
 function checkAndConvert(data, type){
   switch(type){
     case "number":
-      if(/^[0-9]+$/.test(data) || /^[0-9]+\.[0-9]+$/.test(data)){
-        return eval(data);
+      if(/^\d+(\.\d+)?$/.test(data) || /^\d+(\.\d+)?\/\d+(\.\d+)?$/.test(data)){
+        var result = eval(data);
+        if(isFinite(result)){
+          return result;
+        }else{
+          errMsg(1, "" + type + ": " + data);
+          return 1;
+        }
       }else{
         errMsg(1, "" + type + ": " + data);
         return 1;
@@ -39,7 +45,7 @@ var dataRegEx = {
   "bpm": /^\(\d+(\.\d+)?\)/,
   "noteSpeed": /^\[\d+(\.\d+)?\]/,
   "division": /^\{\d+(\.\d+)?\}/,
-  "exCommand": /^\'[a-zA-Z_][a-zA-Z0-9_]*=[a-zA-Z0-9]+\'/,
+  "exCommand": /^\'[a-zA-Z_][a-zA-Z0-9_]*=[a-zA-Z0-9\.\/]+\'/,
   "step": /^,/,
   "note": /^[1-9]/,
   "hiddenNote": /^0/,
