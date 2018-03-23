@@ -131,7 +131,7 @@ $(document).ready(function(){
   var statusMode = window.statusMode;
 
   // initialize KeyHandler Objects
-  var acceptKeys = ["Spacebar", "ArrowLeft", "ArrowRight", "f", "j", "[", "]", "1", "2", "3", "`"];
+  var acceptKeys = ["Spacebar", "ArrowLeft", "ArrowRight", "f", "j", "[", "]", "1", "2", "3", "`", "Escape"];
   var playKeys = ["Spacebar", "f", "j"];
   var keys = {};
   for(var index in acceptKeys){
@@ -141,14 +141,31 @@ $(document).ready(function(){
   var key_fast = "2"          // make numbers go faster (usually x10)
   var key_slow = "3"          // make numbers go slower (usually /10)
   var key_displayDebug = "`"  // display debug info during game
+  var key_menu = "Escape"     // use to return menu
 
   // canvas mouse listener
   canvas.addEventListener('click', function(evt) {
   var mousePos = getMousePos(canvas, evt);
-    for (var button in menuButtons){
-      if (isInside(mousePos, menuButtons[button])) {
-        menuButtons[button].handler.trigger()
+    if(statusMode == 1){
+      for (var button in menuButtons){
+        if (isInside(mousePos, menuButtons[button])) {
+          menuButtons[button].handler.trigger()
+        }
       }
+    }
+    else if(statusMode == 2){
+      for (var button in inGameButtons){
+        if (isInside(mousePos, inGameButtons[button])) {
+          inGameButtons[button].handler.trigger()
+        }
+      } 
+    }
+    else if(statusMode == 3){
+      for (var button in inGameButtons){
+        if (isInside(mousePos, inGameButtons[button])) {
+          inGameButtons[button].handler.trigger()
+        }
+      } 
     }
   }, false);
   document.addEventListener("keydown", keyDownHandler, false);
@@ -214,15 +231,27 @@ $(document).ready(function(){
     scrollPlus:  {x: 330, y: 260, w:  50, h: 40, text: "+(→)", fg: "white", bg: "#ff7700"},
     scrollReset: {x: 160, y: 260, w: 160, h: 40, text: "Speed: "+scrollMult.v+"x", fg: "white", bg: "#ff7700"},
   };
+  var inGameButtons = {
+    menuButton: {x: 0, y: 300, w: 100, h: 20, text: "Menu(Esc)", fg: "white", bg: "#0095DD"},
+  };
+  var resultButtons = {
+    menuButton: {x: 0, y: 300, w: 100, h: 20, text: "Menu(Esc)", fg: "white", bg: "#0095DD"},
+  };
 
   for(var button in menuButtons) {
     menuButtons[button].handler = new CanvasButtonHandler();
+  }
+  for(var button in inGameButtons) {
+    inGameButtons[button].handler = new CanvasButtonHandler();
+  }
+  for(var button in resultButtons) {
+    resultButtons[button].handler = new CanvasButtonHandler();
   }
 
   // start playing the notes
   function startGame(){
     dataObj = window.dataObj;
-    hitNoteObjs = dataObj["s"];
+    hitNoteObjs = JSON.parse(JSON.stringify(dataObj["s"]));
     revNoteObjs = hitNoteObjs;
     eventObjs = dataObj["e"];
     visualObjs = dataObj["v"];
@@ -245,6 +274,7 @@ $(document).ready(function(){
     totalScoreRep = getTotalScoreRep(noteDigest);
     startTime = Date.now();
     nowTime = startTime + customOffset.v;
+    bgm.currentTime = 0;
     bgm.play();
   }
 
@@ -507,9 +537,9 @@ $(document).ready(function(){
     ctx.textAlign = "center";
     ctx.fillText("Input Files below", canvas.width/2, canvas.height/2);
   }
-  function drawMenu(){
-    for (var button in menuButtons){
-      drawButton(menuButtons[button]);
+  function drawButtonList(buttonList){
+    for (var button in buttonList){
+      drawButton(buttonList[button]);
     }
   }
 
@@ -566,12 +596,12 @@ $(document).ready(function(){
   
   function drawDebug() {
     ctx.beginPath();
-    ctx.font = "10px Lucida Sans Unicode";
+    ctx.font = "15px Lucida Sans Unicode";
     ctx.fillStyle = menuButtons["offsetReset"].bg;
-    ctx.textAlign = "center";
-    ctx.fillText(menuButtons["offsetReset"].text, 100, canvas.height - 15);
+    ctx.textAlign = "start";
+    ctx.fillText(menuButtons["offsetReset"].text, 110, 310);
     ctx.fillStyle = menuButtons["scrollReset"].bg;
-    ctx.fillText(menuButtons["scrollReset"].text, 380, canvas.height - 15);
+    ctx.fillText(menuButtons["scrollReset"].text, 280, 310);
   }
 
   function customizationCommandCalls() {
@@ -627,6 +657,12 @@ $(document).ready(function(){
     for(var button in menuButtons){
       menuButtons[button].handler.update();
     }
+    for(var button in inGameButtons){
+      inGameButtons[button].handler.update();
+    }
+    for(var button in resultButtons){
+      resultButtons[button].handler.update();
+    }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if(statusMode==0){
       // no files loaded
@@ -643,7 +679,7 @@ $(document).ready(function(){
       }
       customizationCommandCalls();
       drawJudgeBorder();
-      drawMenu();
+      drawButtonList(menuButtons);
     }
     else if(statusMode==2){
       // in game
@@ -654,6 +690,11 @@ $(document).ready(function(){
       if(inGame_displayDebug){
         customizationCommandCalls();
         drawDebug();
+      }
+      // menu button
+      if(inGameButtons["menuButton"].handler.fell() || keys[key_menu].rose()) {
+        bgm.pause();
+        changeStatusMode(1);
       }
       hitNotePos = updatePos(elapseTime, hitNotePos, hitNoteObjs);
       if(keys["Spacebar"].isHolding() || keys["f"].isHolding() || keys["j"].isHolding()){
@@ -700,6 +741,7 @@ $(document).ready(function(){
       drawPlayField(elapseTime, hitNotePos);
       drawJudge(lastJudge, judgePos);
       drawHUD(combo, score);
+      drawButtonList(inGameButtons);
       eventProcess(elapseTime, evPos);
     }
     else if(statusMode==3){
@@ -711,7 +753,12 @@ $(document).ready(function(){
         customizationCommandCalls();
         drawDebug();
       }
+      if(inGameButtons["menuButton"].handler.fell() || keys[key_menu].rose()) {
+        bgm.pause();
+        changeStatusMode(1);
+      }
       drawResultScreen();
+      drawButtonList(resultButtons);
     }
   }
   setInterval(_compound, 5); //run every 10ms
