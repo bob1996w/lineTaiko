@@ -96,6 +96,32 @@ KeyHandler.prototype.update = function(){
 }
 // end of KeyHandler
 
+/*  CanvasButtonHandler:
+    Basically same purpose as KeyHandler, but to work with on-canvas buttons
+    Webpage only sends click event when releasing the mouse button.(fall)
+ */
+var CanvasButtonHandler = function() {
+  this.clickedTrigger = false;
+  this.fall = false;
+  this.lastFall = Date.now();
+}
+CanvasButtonHandler.prototype.trigger = function(){
+  this.clickedTrigger = true;
+  this.lastFall = Date.now();
+}
+CanvasButtonHandler.prototype.fell = function() {
+  return this.fall;
+}
+CanvasButtonHandler.prototype.update = function() {
+  if(this.fall){
+    this.fall = false;
+  }
+  if(this.clickedTrigger){
+    this.clickedTrigger = false;
+    this.fall = true;
+  }
+}
+
 $(document).ready(function(){
   var bgm = document.createElement("audio");
   var sfx = document.createElement("audio");
@@ -105,20 +131,23 @@ $(document).ready(function(){
   var statusMode = window.statusMode;
 
   // initialize KeyHandler Objects
-  var acceptKeys = ["Spacebar", "ArrowLeft", "ArrowRight", "f", "j"];
+  var acceptKeys = ["Spacebar", "ArrowLeft", "ArrowRight", "f", "j", "[", "]", "1", "2", "3", "`"];
   var playKeys = ["Spacebar", "f", "j"];
   var keys = {};
   for(var index in acceptKeys){
     keys[acceptKeys[index]] = new KeyHandler();
   }
+  var key_dev = "1"           // for overriding some limitations
+  var key_fast = "2"          // make numbers go faster (usually x10)
+  var key_slow = "3"          // make numbers go slower (usually /10)
+  var key_displayDebug = "`"  // display debug info during game
 
   // canvas mouse listener
   canvas.addEventListener('click', function(evt) {
   var mousePos = getMousePos(canvas, evt);
     for (var button in menuButtons){
       if (isInside(mousePos, menuButtons[button])) {
-        menuButtons[button].trigger = true;
-        menuButtons[button].triggerTime = Date.now();
+        menuButtons[button].handler.trigger()
       }
     }
   }, false);
@@ -149,8 +178,10 @@ $(document).ready(function(){
   var nowFrame = 0;
   var playarea = {x1: 0, y1: 50, x2: canvas.width, y2: 150};
   var judgePos = {x: 100, y: 100, h: playarea.y2 - playarea.y1};
+  var customOffset = {v: 0, inc: 10} // menu Screen offset, in ms
   var scrollSpeed = 400;   // pixel per sec
-  var scrollMult = 1.0;   // set on menu screen
+  var scrollMult = {v: 1.0, b: 10000, min: 100, max: 100000, inc: 1000, def: 10000};   // menu Screen scroll speed:
+  // v = value used by game, b = 10000*v = value for +/- on menu to avoid floating point issue
   var dataObj = {};
   var revNoteObjs = {}; // for drawing notes
   var hitNoteObjs = {}; // for timing the hits
@@ -171,12 +202,22 @@ $(document).ready(function(){
   var judgeRes = {}
   var lastJudge = {delay: 0, judge: "", timing: ""}
   var totalJudge = {delay: 0, hitNotes: 0}; // to calculate average delay of notes hit.
-
+  var inGame_displayDebug = false; // enable customizationCommandCalls during gameplay and result
 
   // ui buttons
   var menuButtons = {
-    startButton: {x: 150, y: 200, w: canvas.width - 300, h:50, text: "Start (Space)", fg: "white", bg: "#0095DD", trigger: false, clicked: false, triggerTime: 0}
+    startButton: {x: 150, y: 150, w: canvas.width - 300, h:50, text: "Start (Space)", fg: "white", bg: "#0095DD"},
+    offsetMinus: {x: 100, y: 210, w:  50, h: 40, text: "-( [ )", fg: "white", bg: "#06bf00"},
+    offsetPlus:  {x: 330, y: 210, w:  50, h: 40, text: "+( ] )", fg: "white", bg: "#06bf00"},
+    offsetReset: {x: 160, y: 210, w: 160, h: 40, text: "Offset: "+customOffset.v+"ms", fg: "white", bg: "#06bf00"},
+    scrollMinus: {x: 100, y: 260, w:  50, h: 40, text: "-(←)", fg: "white", bg: "#ff7700"},
+    scrollPlus:  {x: 330, y: 260, w:  50, h: 40, text: "+(→)", fg: "white", bg: "#ff7700"},
+    scrollReset: {x: 160, y: 260, w: 160, h: 40, text: "Speed: "+scrollMult.v+"x", fg: "white", bg: "#ff7700"},
   };
+
+  for(var button in menuButtons) {
+    menuButtons[button].handler = new CanvasButtonHandler();
+  }
 
   // start playing the notes
   function startGame(){
@@ -202,8 +243,8 @@ $(document).ready(function(){
     lastJudge = {delay: 0, judge: "", timing: ""};
     totalJudge = {delay: 0, hitNotes: 0};
     totalScoreRep = getTotalScoreRep(noteDigest);
-    nowTime = Date.now();
-    startTime = nowTime;
+    startTime = Date.now();
+    nowTime = startTime + customOffset.v;
     bgm.play();
   }
 
@@ -225,8 +266,8 @@ $(document).ready(function(){
 
   // TODO: read the hit label and don't draw when the note is hit
   function drawNote(noteObj, elapseTime, scrollSpeed, special){
-    var xpos = (noteObj.t - elapseTime) * scrollSpeed * noteObj.s / 1000 * Math.cos(deg2Rad(noteObj.angle)) + noteObj.approachJudgePos.x;
-    var ypos = (noteObj.t - elapseTime) * scrollSpeed * noteObj.s / -1000 * Math.sin(deg2Rad(noteObj.angle)) + noteObj.approachJudgePos.y;
+    var xpos = (noteObj.t - elapseTime) * scrollSpeed * scrollMult.v * noteObj.s / 1000 * Math.cos(deg2Rad(noteObj.angle)) + noteObj.approachJudgePos.x;
+    var ypos = (noteObj.t - elapseTime) * scrollSpeed * scrollMult.v * noteObj.s / -1000 * Math.sin(deg2Rad(noteObj.angle)) + noteObj.approachJudgePos.y;
     if(xpos > -300 && xpos < canvas.width + 300 && ypos > -300 && ypos < canvas.height + 300 && !noteObj.hit){
 
       if(special){
@@ -265,8 +306,8 @@ $(document).ready(function(){
   }
 
   function drawVisual(visualObj, elapseTime, scrollSpeed){
-    var xpos = (visualObj.t - elapseTime) * scrollSpeed * visualObj.s / 1000 * Math.cos(deg2Rad(visualObj.angle)) + visualObj.approachJudgePos.x;
-    var ypos = (visualObj.t - elapseTime) * scrollSpeed * visualObj.s / -1000 * Math.sin(deg2Rad(visualObj.angle)) + visualObj.approachJudgePos.y;
+    var xpos = (visualObj.t - elapseTime) * scrollSpeed * scrollMult.v * visualObj.s / 1000 * Math.cos(deg2Rad(visualObj.angle)) + visualObj.approachJudgePos.x;
+    var ypos = (visualObj.t - elapseTime) * scrollSpeed * scrollMult.v * visualObj.s / -1000 * Math.sin(deg2Rad(visualObj.angle)) + visualObj.approachJudgePos.y;
     if(xpos > -300 && xpos < canvas.width + 300 && ypos > -300 && ypos < canvas.height + 300){
       switch(visualObj.type){
         case "barLine":
@@ -350,34 +391,8 @@ $(document).ready(function(){
       hitNotePosNext: false
     };
     judgeObj["delay"] = delay;
-    /*
-    if(delay > judgeTime.good){ // too late
-      judgeObj.judge = "miss";
-      judgeObj.timing = "";
-      judgeObj.hitNotePosNext = true;
-    }else if(judgeTime.great < delay && delay < judgeTime.good){
-      judgeObj.judge = "good";
-      judgeObj.timing = "late";
-      judgeObj.hitNotePosNext = true;
-    }else if(-judgeTime.great < delay && delay < judgeTime.great){
-      judgeObj.judge = "great";
-      judgeObj.timing = "";
-      judgeObj.hitNotePosNext = true;
-    }else if(-judgeTime.good < delay && delay < -judgeTime.great){
-      judgeObj.judge = "good";
-      judgeObj.timing = "early"
-      judgeObj.hitNotePosNext = true;
-    }
-    */
     timing = (delay > 0)? "late" : (delay < 0)? "fast" : "";
     var delayAbs = Math.abs(delay);
-    /*
-    for(var judgeType in judgeTime){
-      if(delayAbs < judgeTime[judgeType]){
-        judgeObj.judge = judgeType;
-        judgeObj.hitNotePosNext = true;
-      }
-    }*/
     if(delayAbs < judgeTime.perfect){
       judgeObj.judge = "perfect";
       judgeObj.hitNotePosNext = true;
@@ -536,7 +551,7 @@ $(document).ready(function(){
     drawJudgeText("miss", getJudgeTotal("miss"), x + 5, y + 105);
     ctx.rect(x, y, 200, 165);
     ctx.stroke();
- }
+  }
   function drawResultScreen(){
     ctx.beginPath();
     ctx.font = "30px Lucida Sans Unicode";
@@ -548,24 +563,69 @@ $(document).ready(function(){
     ctx.fillText("Overall Delay: " + Math.round(totalJudge.delay / totalJudge.hitNotes) + "ms", canvas.width/2, canvas.height/2 + 125);
     drawJudgeResult(canvas.width/2 - 100, 100);
   }
+  
+  function drawDebug() {
+    ctx.beginPath();
+    ctx.font = "10px Lucida Sans Unicode";
+    ctx.fillStyle = menuButtons["offsetReset"].bg;
+    ctx.textAlign = "center";
+    ctx.fillText(menuButtons["offsetReset"].text, 100, canvas.height - 15);
+    ctx.fillStyle = menuButtons["scrollReset"].bg;
+    ctx.fillText(menuButtons["scrollReset"].text, 380, canvas.height - 15);
+  }
 
+  function customizationCommandCalls() {
+    if(menuButtons["scrollPlus"].handler.fell() || keys["ArrowRight"].rose()){
+      var incValue = scrollMult.inc;
+      if(keys[key_fast].isHolding()){incValue *= 10;}
+      if(keys[key_slow].isHolding()){incValue /= 10;}
+      if(keys[key_dev].isHolding() || scrollMult.b + incValue <= scrollMult.max){
+        scrollMult.b += incValue;
+        scrollMult.v = scrollMult.b / scrollMult.def;
+        menuButtons["scrollReset"].text = "Speed: "+scrollMult.v+"x";
+      }
+    }
+    if(menuButtons["scrollMinus"].handler.fell() || keys["ArrowLeft"].rose()){
+      var incValue = scrollMult.inc;
+      if(keys[key_fast].isHolding()){incValue *= 10;}
+      if(keys[key_slow].isHolding()){incValue /= 10;}
+      if(keys[key_dev].isHolding() || scrollMult.b - incValue >= scrollMult.min){
+        scrollMult.b -= incValue;
+        scrollMult.v = scrollMult.b / scrollMult.def;
+        menuButtons["scrollReset"].text = "Speed: "+scrollMult.v+"x";
+      }
+    }
+    if(menuButtons["scrollReset"].handler.fell()){
+      scrollMult.b = scrollMult.def;
+      scrollMult.v = scrollMult.b / scrollMult.def;
+      menuButtons["scrollReset"].text = "Speed: "+scrollMult.v+"x";
+    }
+    if(menuButtons["offsetPlus"].handler.fell() || keys["]"].rose()){
+      var incValue = customOffset.inc;
+      if(keys[key_fast].isHolding()){incValue *= 10;}
+      if(keys[key_slow].isHolding()){incValue /= 10;}
+      customOffset.v += incValue;
+      menuButtons["offsetReset"].text = "Offset: "+customOffset.v+"ms";
+    }
+    if(menuButtons["offsetMinus"].handler.fell() || keys["["].rose()){
+      var incValue = customOffset.inc;
+      if(keys[key_fast].isHolding()){incValue *= 10;}
+      if(keys[key_slow].isHolding()){incValue /= 10;}
+      customOffset.v -= incValue;
+      menuButtons["offsetReset"].text = "Offset: "+customOffset.v+"ms";
+    }
+  }
 
   function _compound(){
     statusMode = window.statusMode;
     nowFrame += 1;
-    nowTime = Date.now();
+    nowTime = Date.now() + customOffset.v;
     elapseTime = nowTime - startTime;
     for(var key in keys){
       keys[key].update();
     }
     for(var button in menuButtons){
-      if(menuButtons[button].trigger){
-        menuButtons[button].trigger = false;
-        menuButtons[button].clicked = true;
-      }
-      if(menuButtons[button].clicked && nowTime - menuButtons[button] > 1000){
-        menuButtons[button].clicked = false;
-      }
+      menuButtons[button].handler.update();
     }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if(statusMode==0){
@@ -576,18 +636,26 @@ $(document).ready(function(){
     else if(statusMode==1){
       // files loaded and ready to start game
       // start the game
-      if(keys["Spacebar"].rose() || menuButtons["startButton"].clicked){
+      if(menuButtons["startButton"].handler.fell() || keys["Spacebar"].rose()){
         startGame();
         changeStatusMode(2);
         //console.log("yes");
       }
+      customizationCommandCalls();
       drawJudgeBorder();
       drawMenu();
     }
     else if(statusMode==2){
       // in game
+      // draw debug info if switched on
+      if(keys[key_displayDebug].rose()){
+        inGame_displayDebug = !inGame_displayDebug;
+      }
+      if(inGame_displayDebug){
+        customizationCommandCalls();
+        drawDebug();
+      }
       hitNotePos = updatePos(elapseTime, hitNotePos, hitNoteObjs);
-      //console.log(hitNotePos);
       if(keys["Spacebar"].isHolding() || keys["f"].isHolding() || keys["j"].isHolding()){
         drawKeyDownBurst();
       }
@@ -597,7 +665,7 @@ $(document).ready(function(){
           /* TODO: might need to revamp the detectHit with detecting all the note instead of a position
           
           */
-          var detectResult = detectHit(keys[playKeys[i]].lastRose() - startTime, hitNoteObjs[hitNotePos]);
+          var detectResult = detectHit(keys[playKeys[i]].lastRose() + customOffset.v - startTime, hitNoteObjs[hitNotePos]);
           var thisNoteType = hitNoteObjs[hitNotePos].n;
           switch(detectResult.judge){
             case "perfect":
@@ -635,6 +703,14 @@ $(document).ready(function(){
       eventProcess(elapseTime, evPos);
     }
     else if(statusMode==3){
+      // draw debug info if switched on
+      if(keys[key_displayDebug].rose()){
+        inGame_displayDebug = !inGame_displayDebug;
+      }
+      if(inGame_displayDebug){
+        customizationCommandCalls();
+        drawDebug();
+      }
       drawResultScreen();
     }
   }
