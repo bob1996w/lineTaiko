@@ -492,12 +492,14 @@ $(document).ready(function(){
   // draw the Border line of play field
   function drawJudgeBorder(){
     // draw judge line
+    /*
     ctx.beginPath();
     ctx.moveTo(judgePos.x, judgePos.y - judgePos.x/2);
     ctx.lineTo(judgePos.x, judgePos.y + judgePos.x/2);
     ctx.lineWidth = 4;
     ctx.strokeStyle = "#0095DD";
     ctx.stroke();
+    */
     // draw judge circle
     ctx.beginPath();
     ctx.strokeStyle = "#0095DD";

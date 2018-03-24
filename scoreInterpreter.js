@@ -82,7 +82,6 @@ function scoreInterpreter(scorestr){
     "1": 0
   };// Total of each kinds of notes
   var pos = 0;
-  console.log(metaData);
   var noteSpeed = 1.0;
   var bpm = checkAndConvert(metaData["bpm"], "number");
   var defdiv = (metaData["defdiv"])? checkAndConvert(metaData["defdiv"], "number") : 4;
