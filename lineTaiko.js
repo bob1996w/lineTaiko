@@ -268,6 +268,8 @@ $(document).ready(function(){
     score = 0;
     combo = 0;
     maxCombo = 0;
+    judgePos.x = 100;
+    judgePos.y = 100;
     judgeRes = judgeResInit(judgeTime, noteDigest);
     lastJudge = {delay: 0, judge: "", timing: ""};
     totalJudge = {delay: 0, hitNotes: 0};
