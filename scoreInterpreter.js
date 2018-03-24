@@ -45,7 +45,7 @@ var dataRegEx = {
   "bpm": /^\(\d+(\.\d+)?\)/,
   "noteSpeed": /^\[\d+(\.\d+)?\]/,
   "division": /^\{\d+(\.\d+)?\}/,
-  "exCommand": /^\'[a-zA-Z_][a-zA-Z0-9_]*=[a-zA-Z0-9\.\/]+\'/,
+  "exCommand": /^\'[a-zA-Z_][a-zA-Z0-9_]*=[a-zA-Z0-9,\.\/]+\'/,
   "step": /^,/,
   "note": /^[1-9]/,
   "hiddenNote": /^0/,
@@ -82,16 +82,21 @@ function scoreInterpreter(scorestr){
     "1": 0
   };// Total of each kinds of notes
   var pos = 0;
-
+  console.log(metaData);
   var noteSpeed = 1.0;
   var bpm = checkAndConvert(metaData["bpm"], "number");
   var defdiv = (metaData["defdiv"])? checkAndConvert(metaData["defdiv"], "number") : 4;
   var div = checkAndConvert(metaData["div"], "number");
   var noteLength = 60000.0 / bpm / (div/4);
   var offset = (metaData["offset"])? checkAndConvert(metaData["offset"], "number") : 0;
-  var judgePos = {x: (metaData["judgePosX"])? checkAndConvert(metaData["judgePosX"], "number") : 100, 
-    y: (metaData["judgePosY"])? checkAndConvert(metaData["judgePosY"], "number") : 100}
+  var judgePos = {x: (metaData["judgeposx"])? checkAndConvert(metaData["judgeposx"], "number") : 100, 
+    y: (metaData["judgeposy"])? checkAndConvert(metaData["judgeposy"], "number") : 100}
+  var defJudgePos = {x: judgePos.x, y: judgePos.y};
   var angle = 0;
+  if (judgePos.x != 100 || judgePos.y != 100){
+    var evObj = {t: time, type: "jp", x: judgePos.x, y: judgePos.y, done: false};
+    events.push(evObj);
+  }
 
   time += offset * 1000;
   while(pos < scoreDataStr.length){
@@ -141,6 +146,21 @@ function scoreInterpreter(scorestr){
               switch(command[0]){
                 case "a":
                   angle = checkAndConvert(command[1], "number");
+                  break;
+                case "jp":
+                  if(command[1] == ","){
+                    judgePos.x = defJudgePos.x;
+                    judgePos.y = defJudgePos.y;
+                  }
+                  else{
+                    var innerCommand = command[1].split(",");
+                    var jpx = checkAndConvert(innerCommand[0], "number");
+                    var jpy = checkAndConvert(innerCommand[1], "number");
+                    judgePos.x = jpx;
+                    judgePos.y = jpy;
+                  }
+                  var evObj = {t: time, type: "jp", x: judgePos.x, y: judgePos.y, done: false};
+                  events.push(evObj);
                   break;
                 default:
                   console.log("Unknown exCommand: " + command[0] + "=" + command[1]);

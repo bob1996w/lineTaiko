@@ -253,8 +253,8 @@ $(document).ready(function(){
     dataObj = window.dataObj;
     hitNoteObjs = JSON.parse(JSON.stringify(dataObj["s"]));
     revNoteObjs = hitNoteObjs;
-    eventObjs = dataObj["e"];
-    visualObjs = dataObj["v"];
+    eventObjs = JSON.parse(JSON.stringify(dataObj["e"]));
+    visualObjs = JSON.parse(JSON.stringify(dataObj["v"]));
     noteDigest = dataObj["digest"];
     //console.log(visualObjs);
     hitNotePos = 0;
@@ -279,19 +279,32 @@ $(document).ready(function(){
   }
 
   function eventProcess(elapseTime, evPos){
+    var isProcessed = false;
     if(elapseTime > eventObjs[evPos].t && eventObjs[evPos].done == false){
       //console.log(eventObjs[evPos]);
-      if(eventObjs[evPos].type == "end"){
-        bgm.pause();
-        bgm.currentTime = 0;
-        eventObjs[evPos].done = true;
-        changeStatusMode(3);
-        window.statusMode = 3;
-        statusMode = 3;
+      switch(eventObjs[evPos].type){
+        case "end":
+          bgm.pause();
+          bgm.currentTime = 0;
+          eventObjs[evPos].done = true;
+          changeStatusMode(3);
+          window.statusMode = 3;
+          statusMode = 3;
+          break;
+        case "jp":
+          judgePos.x = eventObjs[evPos].x;
+          judgePos.y = eventObjs[evPos].y;
+          eventObjs[evPos].done = true;
+          break;
+        case "dummy":
+          eventObjs[evPos].done = true;
       }
+      isProcessed = true;
     }
-
-    return (evPos >= eventObjs.length - 1)? evPos : evPos + 1;
+    if(isProcessed){
+      return (evPos >= eventObjs.length)? evPos : evPos + 1;
+    }
+    else return evPos;
   }
 
   // TODO: read the hit label and don't draw when the note is hit
@@ -742,7 +755,7 @@ $(document).ready(function(){
       drawJudge(lastJudge, judgePos);
       drawHUD(combo, score);
       drawButtonList(inGameButtons);
-      eventProcess(elapseTime, evPos);
+      evPos = eventProcess(elapseTime, evPos);
     }
     else if(statusMode==3){
       // draw debug info if switched on
