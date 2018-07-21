@@ -76,7 +76,7 @@ $(document).ready(function(){
     var dataObj = {};
     var jqxhr = $.get(dataBlobUrl, function(data){
       //alert("Finish getting data:\n" + data);
-      dataObj = scoreInterpreter(data);
+      dataObj = si.scoreInterpreter(data);
       window.dataObj = dataObj;
     }).done(function(){
       //alert("Done");

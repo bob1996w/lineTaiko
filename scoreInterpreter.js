@@ -1,6 +1,22 @@
 // use iife to prevent global variable/functions
-window.si = (function () {
-  function removeComments(line){
+(function (window) {
+
+  var s = function () {
+    // all regex's in data files
+    this.dataRegEx = {
+      "bpm": /^\(\d+(\.\d+)?\)/,
+      "noteSpeed": /^\[\d+(\.\d+)?\]/,
+      "division": /^\{\d+(\.\d+)?\}/,
+      "exCommand": /^\'[a-zA-Z_][a-zA-Z0-9_]*=[a-zA-Z0-9,\.\/]+\'/,
+      "step": /^,/,
+      "note": /^[1-9]/,
+      "hiddenNote": /^0/,
+      "end": /^E/,
+      "barLine": /^\|/,
+    };
+  }
+
+  s.prototype.removeComments = function (line){
     var index = line.indexOf(';');
     if(index < 0){
       return line;
@@ -9,7 +25,7 @@ window.si = (function () {
     }
   }
   
-  function convertMetaData(lines){
+  s.prototype.convertMetaData = function (lines){
     var metaObj = {};
     for(var line in lines){
       var index = lines[line].indexOf('=');
@@ -18,7 +34,7 @@ window.si = (function () {
     return metaObj;
   }
   
-  function checkAndConvert(data, type){
+  s.prototype.checkAndConvert = function (data, type){
     switch(type){
       case "number":
         if(/^\d+(\.\d+)?$/.test(data) || /^\d+(\.\d+)?\/\d+(\.\d+)?$/.test(data)){
@@ -26,32 +42,19 @@ window.si = (function () {
           if(isFinite(result)){
             return result;
           }else{
-            errMsg(1, "" + type + ": " + data);
+            this.errMsg(1, "" + type + ": " + data);
             return 1;
           }
         }else{
-          errMsg(1, "" + type + ": " + data);
+          this.errMsg(1, "" + type + ": " + data);
           return 1;
         }
     }
   }
   
   // cut off the first and last char in a string
-  String.prototype.trimHeadTail = function (){
-    return this.substring(1, this.length - 1);
-  }
-  
-  // all regex's in data files
-  var dataRegEx = {
-    "bpm": /^\(\d+(\.\d+)?\)/,
-    "noteSpeed": /^\[\d+(\.\d+)?\]/,
-    "division": /^\{\d+(\.\d+)?\}/,
-    "exCommand": /^\'[a-zA-Z_][a-zA-Z0-9_]*=[a-zA-Z0-9,\.\/]+\'/,
-    "step": /^,/,
-    "note": /^[1-9]/,
-    "hiddenNote": /^0/,
-    "end": /^E/,
-    "barLine": /^\|/,
+  s.prototype.trimHeadTail = function (str){
+    return str.substring(1, str.length - 1);
   }
   
   /*
@@ -67,9 +70,9 @@ window.si = (function () {
       judgePos: the position it should go toward to
   */
   
-  function scoreInterpreter(scorestr){
-    var rawLines = scorestr.split(/\r\n|\n/).map(removeComments).map(line => line.replace(/\s+$/, ''));
-    var metaData = convertMetaData(rawLines.filter(line => line[0] == '#').map(line => line.substring(1)));
+  s.prototype.scoreInterpreter = function (scorestr){
+    var rawLines = scorestr.split(/\r\n|\n/).map(this.removeComments).map(line => line.replace(/\s+$/, ''));
+    var metaData = this.convertMetaData(rawLines.filter(line => line[0] == '#').map(line => line.substring(1)));
     var scoreDataStr = rawLines.filter(line => line[0] != '#').map(line => line.replace(/\s/g, '')).join('');
     //console.log(metaData);
   
@@ -84,13 +87,13 @@ window.si = (function () {
     };// Total of each kinds of notes
     var pos = 0;
     var noteSpeed = 1.0;
-    var bpm = checkAndConvert(metaData["bpm"], "number");
-    var defdiv = (metaData["defdiv"])? checkAndConvert(metaData["defdiv"], "number") : 4;
-    var div = checkAndConvert(metaData["div"], "number");
+    var bpm = this.checkAndConvert(metaData["bpm"], "number");
+    var defdiv = (metaData["defdiv"])? this.checkAndConvert(metaData["defdiv"], "number") : 4;
+    var div = this.checkAndConvert(metaData["div"], "number");
     var noteLength = 60000.0 / bpm / (div/4);
-    var offset = (metaData["offset"])? checkAndConvert(metaData["offset"], "number") : 0;
-    var judgePos = {x: (metaData["judgeposx"])? checkAndConvert(metaData["judgeposx"], "number") : 100, 
-      y: (metaData["judgeposy"])? checkAndConvert(metaData["judgeposy"], "number") : 100}
+    var offset = (metaData["offset"])? this.checkAndConvert(metaData["offset"], "number") : 0;
+    var judgePos = {x: (metaData["judgeposx"])? this.checkAndConvert(metaData["judgeposx"], "number") : 100, 
+      y: (metaData["judgeposy"])? this.checkAndConvert(metaData["judgeposy"], "number") : 100}
     var defJudgePos = {x: judgePos.x, y: judgePos.y};
     var angle = 0;
     if (judgePos.x != 100 || judgePos.y != 100){
@@ -102,21 +105,21 @@ window.si = (function () {
     while(pos < scoreDataStr.length){
       var validflag = false;
       var nowString = scoreDataStr.substring(pos);
-      for(var regExType in dataRegEx){
-        var result = dataRegEx[regExType].exec(nowString);
+      for(var regExType in this.dataRegEx){
+        var result = this.dataRegEx[regExType].exec(nowString);
         if(result != null){
           if(result.index == 0){
             //console.log("Pos " + pos + " Regex matched: " + regExType + ": " + result[0]);
             switch(regExType){
               case "bpm":
-                bpm = checkAndConvert(result[0].trimHeadTail(), "number");
+                bpm = this.checkAndConvert(this.trimHeadTail(result[0]), "number");
                 noteLength = 60000.0 / bpm / (div/4);
                 break;
               case "noteSpeed":
-                noteSpeed = checkAndConvert(result[0].trimHeadTail(), "number");
+                noteSpeed = this.checkAndConvert(this.trimHeadTail(result[0]), "number");
                 break;
               case "division":
-                div = checkAndConvert(result[0].trimHeadTail(), "number");
+                div = this.checkAndConvert(this.trimHeadTail(result[0]), "number");
                 noteLength = 60000.0 / bpm / (div/4);
                 break;
               case "step":
@@ -142,10 +145,10 @@ window.si = (function () {
                 break;
                 case "exCommand":
                 // NOTE: reserved for future extension of data file
-                var command = result[0].trimHeadTail().split("=");
+                var command = this.trimHeadTail(result[0]).split("=");
                 switch(command[0]){
                   case "a":
-                    angle = checkAndConvert(command[1], "number");
+                    angle = this.checkAndConvert(command[1], "number");
                     break;
                   case "jp":
                     if(command[1] == ","){
@@ -154,8 +157,8 @@ window.si = (function () {
                     }
                     else{
                       var innerCommand = command[1].split(",");
-                      var jpx = checkAndConvert(innerCommand[0], "number");
-                      var jpy = checkAndConvert(innerCommand[1], "number");
+                      var jpx = this.checkAndConvert(innerCommand[0], "number");
+                      var jpy = this.checkAndConvert(innerCommand[1], "number");
                       judgePos.x = jpx;
                       judgePos.y = jpy;
                     }
@@ -168,7 +171,7 @@ window.si = (function () {
                 }
                 break;
               default:
-                errMsg(2);
+                this.errMsg(2);
                 alert("result\n" + result[0]);
             }
             pos += result[0].length
@@ -191,7 +194,7 @@ window.si = (function () {
     return metaData;
   }
   
-  function errMsg(errN, msgData){
+  s.prototype.errMsg = function (errN, msgData){
     var msg = "";
     switch(errN){
       case 1:
@@ -203,5 +206,7 @@ window.si = (function () {
     }
     alert("Error " + errN + ":\n" + msg + "\n" + msgData);
   }
-})
+
+  window.si = new s();
+}) (window);
 
